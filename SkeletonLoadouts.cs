@@ -40,7 +40,7 @@ namespace ValheimSkeletonTracker
             for (int i = 0; i < MaxAttempts; i++)
             {
                 int candidate = unchecked(seed + i * 7919);
-                if (candidate == 0 || HasBow(humanoid, candidate) != (loadout == SkeletonLoadout.Bow))
+                if (candidate == 0 || !Matches(loadout, RollItems(humanoid, candidate)))
                     continue;
                 if (candidate != seed)
                 {
@@ -51,15 +51,26 @@ namespace ValheimSkeletonTracker
             }
         }
 
-        private static bool HasBow(Humanoid humanoid, int seed)
+        // A melee roll does not always include a shield, so SwordAndShield requires both a melee weapon and a shield.
+        private static bool Matches(SkeletonLoadout loadout, List<GameObject> items)
         {
-            foreach (var prefab in RollItems(humanoid, seed))
+            bool hasBow = false;
+            bool hasMelee = false;
+            bool hasShield = false;
+            foreach (var prefab in items)
             {
                 var itemDrop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
-                if (itemDrop != null && SummonedSkeletons.IsRangedWeapon(itemDrop.m_itemData))
-                    return true;
+                if (itemDrop == null)
+                    continue;
+                var item = itemDrop.m_itemData;
+                if (SummonedSkeletons.IsRangedWeapon(item))
+                    hasBow = true;
+                else if (item.IsWeapon())
+                    hasMelee = true;
+                else if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
+                    hasShield = true;
             }
-            return false;
+            return loadout == SkeletonLoadout.Bow ? hasBow : !hasBow && hasMelee && hasShield;
         }
 
         // Mirrors the roll order in Humanoid.GiveDefaultItems.
