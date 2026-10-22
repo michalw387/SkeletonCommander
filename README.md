@@ -1,6 +1,6 @@
-# Skeleton Tracker
+# Skeleton Commander
 
-A Valheim mod (BepInEx 5) that makes it easier to track and command the skeletons summoned with the
+A Valheim mod (BepInEx 5) for tracking and commanding the skeletons summoned with the
 **Dead Raiser** staff. The mod is client-side only and affects only the skeletons you summoned.
 
 ## Features
@@ -32,16 +32,26 @@ A Valheim mod (BepInEx 5) that makes it easier to track and command the skeleton
 
 ## Installation
 
+### With a mod manager (recommended)
+
+Install **SkeletonCommander** from [Thunderstore](https://thunderstore.io/c/valheim/) with
+r2modman or the Thunderstore Mod Manager; BepInExPack Valheim is installed with it.
+
+### Manually
+
 1. Install BepInExPack Valheim following its instructions and start the game once so BepInEx
    creates its folders.
-2. Copy `ValheimSkeletonTracker.dll` to:
+2. Copy `SkeletonCommander.dll` to:
    ```
-   <Valheim folder>/BepInEx/plugins/SkeletonTracker/
+   <Valheim folder>/BepInEx/plugins/SkeletonCommander/
    ```
 3. Start the game. On first launch the config file
-   `BepInEx/config/michal.valheim.skeletontracker.cfg` is created.
+   `BepInEx/config/michal.valheim.skeletoncommander.cfg` is created.
 
-To uninstall, delete the `BepInEx/plugins/SkeletonTracker/` folder (and optionally the `.cfg` file).
+To uninstall, delete the `BepInEx/plugins/SkeletonCommander/` folder (and optionally the `.cfg` file).
+
+The mod used to be called **Skeleton Tracker**. When upgrading, delete the old
+`BepInEx/plugins/SkeletonTracker/` folder; your settings are taken over from the old config file.
 
 ## Controls
 
@@ -80,7 +90,7 @@ The commands do not require `devcommands`.
 
 ## Configuration
 
-File: `BepInEx/config/michal.valheim.skeletontracker.cfg`. Changes to the file take effect after
+File: `BepInEx/config/michal.valheim.skeletoncommander.cfg`. Changes to the file take effect after
 restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valheim/p/shudnal/ConfigurationManager/)
 (F1 by default) you can change them in-game.
 
@@ -129,8 +139,18 @@ Requires the .NET SDK (the project targets `netstandard2.1`).
    dotnet build
    ```
    After compiling, the DLL is copied automatically to the plugins folder set by the
-   `ValheimPluginsDir` property in `ValheimSkeletonTracker.csproj`. You can pass a different path
+   `ValheimPluginsDir` property in `SkeletonCommander.csproj`. You can pass a different path
    when building:
    ```
-   dotnet build -p:ValheimPluginsDir=/path/to/Valheim/BepInEx/plugins/SkeletonTracker/
+   dotnet build -p:ValheimPluginsDir=/path/to/Valheim/BepInEx/plugins/SkeletonCommander/
    ```
+
+   A Release build also creates the Thunderstore package `bin/thunderstore/SkeletonCommander-<version>.zip`
+   (manifest from `thunderstore/manifest.json`, version from `PluginVersion` in `SkeletonCommanderPlugin.cs`):
+   ```
+   dotnet build -c Release
+   ```
+
+## License
+
+[MIT](LICENSE)
