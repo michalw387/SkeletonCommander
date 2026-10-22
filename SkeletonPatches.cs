@@ -55,6 +55,13 @@ namespace ValheimSkeletonTracker
                 bar.ResetColor();
         }
 
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GiveDefaultItems))]
+        [HarmonyPrefix]
+        private static void ChooseSummonLoadout(Humanoid __instance)
+        {
+            SkeletonLoadouts.Apply(__instance);
+        }
+
         [HarmonyPatch(typeof(Tameable), nameof(Tameable.GetHoverText))]
         [HarmonyPostfix]
         private static void AddHotkeyHints(Tameable __instance, ref string __result)

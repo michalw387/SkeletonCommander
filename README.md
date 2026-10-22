@@ -8,11 +8,13 @@ A Valheim mod (BepInEx 5) that makes it easier to track and command the skeleton
 - **Minimap pins** – each of your skeletons gets a map pin with the skeleton trophy icon, updated
   every 0.5 s. On the large map the pin label shows its state: following or staying.
 - **HUD counter** – below the minimap: how many skeletons you have and how many are following you
-  or staying. Optionally a detailed list: name, weapon (bow / sword / club / axe), HP, distance and state.
+  or staying. Optionally a detailed list: name, weapon (bow or sword & shield), HP, distance and state.
 - **Health bars** – always visible above your skeletons' heads (up to 40 m by default), colored by
   HP: green above 60%, yellow above 30%, red below.
 - **Glow** – a subtle light around your skeletons so they are easy to tell apart.
 - **Death notifications** – an on-screen message when one of your skeletons dies.
+- **Summon loadout** – choose whether newly summoned skeletons get a sword and shield or a bow
+  (random by default).
 - **Commands and hotkeys** – follow, stay and dismiss for all skeletons at once, or only for the one
   you are aiming at.
 
@@ -44,6 +46,7 @@ To uninstall, delete the `BepInEx/plugins/SkeletonTracker/` folder (and optional
 | Left Alt + G | skeletons stay in place |
 | Left Alt + H | dismiss skeletons |
 | Left Alt + J | list skeletons in chat |
+| Left Alt + K | switch the loadout of newly summoned skeletons (Random → SwordAndShield → Bow) |
 
 When you aim at one of your skeletons, the Follow / Stay / Dismiss hotkeys affect only that skeleton
 (the key hints appear in its hover text). Hotkeys are ignored while typing in chat and in menus,
@@ -76,6 +79,9 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 | `Hotkeys` | `Stay` | `G + LeftAlt` | stay hotkey |
 | `Hotkeys` | `Dismiss` | `H + LeftAlt` | dismiss hotkey |
 | `Hotkeys` | `List` | `J + LeftAlt` | list-in-chat hotkey |
+| `Hotkeys` | `CycleLoadout` | `K + LeftAlt` | hotkey switching `Summon.Loadout` |
+| `Summon` | `Loadout` | `Random` | weapons of newly summoned skeletons: `Random`, `SwordAndShield` or `Bow` |
+| `Notifications` | `Death` | `true` | message when a skeleton dies |
 | `HUD` | `ShowCounter` | `true` | skeleton counter below the minimap |
 | `HUD` | `ShowDetails` | `true` | detailed skeleton list below the counter |
 | `HUD` | `CounterPositionY` | `0.3` | vertical counter position (0 = top, 1 = bottom of the screen) |
@@ -86,7 +92,6 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 | `Glow` | `Color` | `66D9FFFF` | glow color (RGBA, hex) |
 | `Glow` | `Intensity` | `1.2` | glow brightness (0–5) |
 | `Glow` | `Range` | `3` | glow range (0.5–10 m) |
-| `Notifications` | `Death` | `true` | message when a skeleton dies |
 
 Hotkeys are written as the main key followed by modifiers, e.g. `F + LeftAlt`. Key names are Unity
 `KeyCode` values (e.g. `Keypad1`, `F7`, `Mouse3`); `None` disables the hotkey.

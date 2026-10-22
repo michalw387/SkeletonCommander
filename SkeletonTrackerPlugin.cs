@@ -14,7 +14,7 @@ namespace ValheimSkeletonTracker
     {
         public const string PluginGuid = "michal.valheim.skeletontracker";
         public const string PluginName = "Skeleton Tracker";
-        public const string PluginVersion = "1.4.0";
+        public const string PluginVersion = "1.5.0";
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
@@ -34,6 +34,7 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<KeyboardShortcut> StayKey;
         internal static ConfigEntry<KeyboardShortcut> DismissKey;
         internal static ConfigEntry<KeyboardShortcut> ListKey;
+        internal static ConfigEntry<KeyboardShortcut> CycleLoadoutKey;
         internal static ConfigEntry<bool> ShowCounter;
         internal static ConfigEntry<bool> ShowDetails;
         internal static ConfigEntry<float> CounterPositionY;
@@ -45,6 +46,7 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<float> GlowIntensity;
         internal static ConfigEntry<float> GlowRange;
         internal static ConfigEntry<bool> DeathNotifications;
+        internal static ConfigEntry<SkeletonLoadout> SummonLoadout;
 
         // The local player's skeletons as of the last scan; read by the Harmony patches.
         private static readonly HashSet<Character> Owned = new HashSet<Character>();
@@ -66,7 +68,8 @@ namespace ValheimSkeletonTracker
 
         private void Awake()
         {
-            // Written to BepInEx/config/<PluginGuid>.cfg on first launch.
+            // Written to BepInEx/config/<PluginGuid>.cfg on first launch. ConfigurationManager lists
+            // sections in the order they are first bound here.
             const string hotkeyNote = " When aiming at one of your skeletons, affects only that one.";
             FollowKey = Config.Bind("Hotkeys", "Follow", new KeyboardShortcut(KeyCode.F, KeyCode.LeftAlt),
                 "Skeletons follow you (like /sk follow)." + hotkeyNote);
@@ -76,6 +79,15 @@ namespace ValheimSkeletonTracker
                 "Dismisses skeletons (like /sk dismiss)." + hotkeyNote);
             ListKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
                 "Lists your skeletons in chat (like /sk list).");
+            CycleLoadoutKey = Config.Bind("Hotkeys", "CycleLoadout", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt),
+                "Switches the Summon.Loadout option: Random -> SwordAndShield -> Bow.");
+
+            SummonLoadout = Config.Bind("Summon", "Loadout", SkeletonLoadout.Random,
+                "Weapons of newly summoned skeletons: Random (game default), SwordAndShield or Bow. " +
+                "Already summoned skeletons keep their weapons.");
+
+            DeathNotifications = Config.Bind("Notifications", "Death", true,
+                "On-screen message when one of your skeletons dies.");
 
             ShowCounter = Config.Bind("HUD", "ShowCounter", true,
                 "Shows the skeleton counter below the minimap.");
@@ -101,9 +113,6 @@ namespace ValheimSkeletonTracker
                 new ConfigDescription("Glow brightness.", new AcceptableValueRange<float>(0f, 5f)));
             GlowRange = Config.Bind("Glow", "Range", 3f,
                 new ConfigDescription("Glow range (m).", new AcceptableValueRange<float>(0.5f, 10f)));
-
-            DeathNotifications = Config.Bind("Notifications", "Death", true,
-                "On-screen message when one of your skeletons dies.");
 
             SkeletonCommands.Register();
             _harmony = Harmony.CreateAndPatchAll(typeof(SkeletonPatches), PluginGuid);
@@ -179,6 +188,12 @@ namespace ValheimSkeletonTracker
                 SkeletonCommands.List(Chat.instance, player);
                 // The chat window hides itself until opened; reset its timer so the list is visible.
                 ChatHideTimer(Chat.instance) = 0f;
+            }
+            else if (CycleLoadoutKey.Value.IsDown())
+            {
+                // Setting the value also saves it to the config file.
+                SummonLoadout.Value = (SkeletonLoadout)(((int)SummonLoadout.Value + 1) % 3);
+                ShowMessage(player, $"Summon loadout: {SummonLoadout.Value}");
             }
         }
 

@@ -13,6 +13,11 @@ namespace ValheimSkeletonTracker
         // is told to stay, so we remember the summoner's ID on the skeleton's ZDO ourselves.
         private const string OwnerKey = "SkeletonTracker_owner";
 
+        public static bool IsSummonedSkeleton(Component component)
+        {
+            return Utils.GetPrefabName(component.gameObject) == Prefab;
+        }
+
         public static void FindOwned(Player player, List<Character> result)
         {
             result.Clear();
@@ -21,7 +26,7 @@ namespace ValheimSkeletonTracker
 
             foreach (var character in Character.GetAllCharacters())
             {
-                if (character == null || character.IsDead() || Utils.GetPrefabName(character.gameObject) != Prefab)
+                if (character == null || character.IsDead() || !IsSummonedSkeleton(character))
                     continue;
 
                 var nview = character.GetComponent<ZNetView>();
@@ -68,20 +73,33 @@ namespace ValheimSkeletonTracker
             return Localization.instance.Localize(skeleton.GetHoverName());
         }
 
+        // Classified by what the skeleton carries rather than the weapon in hand (the AI swaps weapons),
+        // and not by m_skillType, which monster weapons leave at its default (Swords).
         public static string GetWeaponName(Character skeleton)
         {
-            var weapon = (skeleton as Humanoid)?.GetCurrentWeapon();
-            if (weapon == null)
-                return "no weapon";
-            switch (weapon.m_shared.m_skillType)
+            var humanoid = skeleton as Humanoid;
+            if (humanoid == null)
+                return "unarmed";
+
+            bool hasWeapon = false;
+            bool hasShield = false;
+            foreach (var item in humanoid.GetInventory().GetAllItems())
             {
-                case Skills.SkillType.Bows: return "bow";
-                case Skills.SkillType.Swords: return "sword";
-                case Skills.SkillType.Clubs: return "club";
-                case Skills.SkillType.Axes: return "axe";
-                case Skills.SkillType.Unarmed: return "unarmed";
-                default: return Localization.instance.Localize(weapon.m_shared.m_name);
+                if (IsRangedWeapon(item))
+                    return "bow";
+                hasWeapon |= item.IsWeapon();
+                hasShield |= item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield;
             }
+            if (!hasWeapon)
+                return "unarmed";
+            return hasShield ? "sword & shield" : "sword";
+        }
+
+        public static bool IsRangedWeapon(ItemDrop.ItemData item)
+        {
+            return item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Bow
+                || (item.IsWeapon() && item.m_shared.m_attack != null
+                    && item.m_shared.m_attack.m_attackType == Attack.AttackType.Projectile);
         }
 
         // Green above 60% health, yellow above 30%, red below.
