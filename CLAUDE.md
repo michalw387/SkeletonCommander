@@ -1,4 +1,4 @@
-# ValheimSkeletonTracker
+# SkeletonCommander (dawniej ValheimSkeletonTracker)
 
 ## Komendy
 - Budowanie i deploy: `dotnet build`
