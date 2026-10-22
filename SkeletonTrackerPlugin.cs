@@ -40,7 +40,14 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<KeyboardShortcut> CycleNextSummonLoadoutKey;
         internal static ConfigEntry<bool> ShowCounter;
         internal static ConfigEntry<bool> ShowDetails;
+        internal static ConfigEntry<bool> ShowStateSummary;
+        internal static ConfigEntry<bool> ShowName;
+        internal static ConfigEntry<bool> ShowWeapon;
+        internal static ConfigEntry<bool> ShowHealth;
+        internal static ConfigEntry<bool> ShowDistance;
+        internal static ConfigEntry<bool> ShowState;
         internal static ConfigEntry<float> CounterPositionY;
+        internal static ConfigEntry<float> HudFontSize;
         internal static ConfigEntry<bool> HealthBars;
         internal static ConfigEntry<float> HealthBarDistance;
         internal static ConfigEntry<bool> HealthBarColors;
@@ -97,9 +104,20 @@ namespace ValheimSkeletonTracker
                 "Shows the skeleton counter below the minimap.");
             ShowDetails = Config.Bind("HUD", "ShowDetails", true,
                 "Lists each skeleton below the counter: name, weapon, health, distance and whether it follows you.");
+            ShowStateSummary = Config.Bind("HUD", "ShowStateSummary", true,
+                "Shows how many skeletons are following you and how many are staying next to the counter.");
+            ShowName = Config.Bind("HUD", "ShowName", true, "Shows each skeleton's name in the detailed list.");
+            ShowWeapon = Config.Bind("HUD", "ShowWeapon", true, "Shows each skeleton's weapon in the detailed list.");
+            ShowHealth = Config.Bind("HUD", "ShowHealth", true, "Shows each skeleton's health in the detailed list.");
+            ShowDistance = Config.Bind("HUD", "ShowDistance", true, "Shows each skeleton's distance from you in the detailed list.");
+            ShowState = Config.Bind("HUD", "ShowState", true,
+                "Shows whether each skeleton is following you or staying in the detailed list.");
             CounterPositionY = Config.Bind("HUD", "CounterPositionY", 0.3f,
                 new ConfigDescription("Vertical counter position as a fraction of screen height (0 = top, 1 = bottom).",
                     new AcceptableValueRange<float>(0f, 1f)));
+            HudFontSize = Config.Bind("HUD", "FontSize", 18f,
+                new ConfigDescription("Font size of the skeleton counter and list; the whole box scales with it.",
+                    new AcceptableValueRange<float>(10f, 40f)));
 
             HealthBars = Config.Bind("HealthBars", "AlwaysShow", true,
                 "Health bars above your skeletons' heads are always visible.");
@@ -272,14 +290,18 @@ namespace ValheimSkeletonTracker
             }
 
             var text = new StringBuilder();
-            text.Append($"<align=center>Skeletons: {_skeletons.Count}  ({following} following, {_skeletons.Count - following} staying)</align>");
+            text.Append($"<align=center>Skeletons: {_skeletons.Count}");
+            if (ShowStateSummary.Value)
+                text.Append($"  ({following} following, {_skeletons.Count - following} staying)");
+            text.Append("</align>");
             if (ShowDetails.Value)
             {
                 // Same numbering as the chat list (/sk list).
                 for (int i = 0; i < _skeletons.Count; i++)
-                    text.Append($"\n<size=80%>#{i + 1}  ").Append(SummonedSkeletons.Describe(_skeletons[i], player)).Append("</size>");
+                    text.Append($"\n<size=80%>#{i + 1}  ").Append(SummonedSkeletons.Describe(_skeletons[i], player,
+                        ShowName.Value, ShowWeapon.Value, ShowHealth.Value, ShowDistance.Value, ShowState.Value)).Append("</size>");
             }
-            _hud.Show(text.ToString(), CounterPositionY.Value);
+            _hud.Show(text.ToString(), CounterPositionY.Value, HudFontSize.Value);
         }
 
         private void OnSkeletonDied(Character skeleton)

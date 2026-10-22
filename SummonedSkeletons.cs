@@ -121,15 +121,29 @@ namespace ValheimSkeletonTracker
             return new Color(1f, 0.25f, 0.2f);
         }
 
-        // One line used by both the chat list and the detailed HUD.
-        public static string Describe(Character skeleton, Player player)
+        // One line used by both the chat list and the detailed HUD; the HUD can leave parts out.
+        public static string Describe(Character skeleton, Player player, bool name = true, bool weapon = true,
+            bool health = true, bool distance = true, bool state = true)
         {
-            float distance = Vector3.Distance(player.transform.position, skeleton.transform.position);
-            string state = IsFollowing(skeleton, player) ? "following" : "staying";
-            string hpColor = ColorUtility.ToHtmlStringRGB(GetHealthColor(skeleton));
-            // Numbers are padded and monospaced so the right-aligned HUD line keeps its width as they change.
-            return $"{GetName(skeleton)} · {GetWeaponName(skeleton)} · <color=#{hpColor}>HP <mspace={DigitWidth}>{skeleton.GetHealth(),3:0}/{skeleton.GetMaxHealth(),-3:0}</mspace></color>"
-                + $" · <mspace={DigitWidth}>{distance,3:0}</mspace> m · {state}";
+            var parts = new List<string>();
+            if (name)
+                parts.Add(GetName(skeleton));
+            if (weapon)
+                parts.Add(GetWeaponName(skeleton));
+            // Numbers are padded and monospaced so the HUD line keeps its width as they change.
+            if (health)
+            {
+                string hpColor = ColorUtility.ToHtmlStringRGB(GetHealthColor(skeleton));
+                parts.Add($"<color=#{hpColor}>HP <mspace={DigitWidth}>{skeleton.GetHealth(),3:0}/{skeleton.GetMaxHealth(),-3:0}</mspace></color>");
+            }
+            if (distance)
+            {
+                float meters = Vector3.Distance(player.transform.position, skeleton.transform.position);
+                parts.Add($"<mspace={DigitWidth}>{meters,3:0}</mspace> m");
+            }
+            if (state)
+                parts.Add(IsFollowing(skeleton, player) ? "following" : "staying");
+            return string.Join(" · ", parts);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace ValheimSkeletonTracker
         private float _noticeHideTime;
         private bool _noticeFading;
 
-        public void Show(string text, float positionY)
+        public void Show(string text, float positionY, float fontSize)
         {
             if (_list == null)
                 _list = CreateText("SkeletonTrackerHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
@@ -24,6 +24,7 @@ namespace ValheimSkeletonTracker
                 return;
 
             _list.text = text;
+            _list.fontSize = fontSize;
             var rect = _list.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f - positionY);
             // Lines are left-aligned inside a box as wide as the longest line, and the box keeps a fixed
