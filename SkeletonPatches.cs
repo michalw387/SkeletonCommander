@@ -108,7 +108,7 @@ namespace ValheimSkeletonTracker
         }
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GiveDefaultItems))]
-        [HarmonyPrefix]
+        [HarmonyPostfix]
         private static void ChooseSummonLoadout(Humanoid __instance)
         {
             SkeletonLoadouts.Apply(__instance);
