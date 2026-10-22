@@ -14,7 +14,7 @@ namespace ValheimSkeletonTracker
     {
         public const string PluginGuid = "michal.valheim.skeletontracker";
         public const string PluginName = "Skeleton Tracker";
-        public const string PluginVersion = "1.5.0";
+        public const string PluginVersion = "1.6.0";
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
@@ -24,6 +24,9 @@ namespace ValheimSkeletonTracker
 
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
+        private static readonly Func<ConfigFile, Dictionary<ConfigDefinition, string>> ConfigOrphanedEntries =
+            AccessTools.MethodDelegate<Func<ConfigFile, Dictionary<ConfigDefinition, string>>>(
+                AccessTools.PropertyGetter(typeof(ConfigFile), "OrphanedEntries"));
         private static readonly AccessTools.FieldRef<Chat, float> ChatHideTimer =
             AccessTools.FieldRefAccess<Chat, float>("m_hideTimer");
         // False while typing in chat/console, in menus, the inventory or the large map.
@@ -34,7 +37,7 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<KeyboardShortcut> StayKey;
         internal static ConfigEntry<KeyboardShortcut> DismissKey;
         internal static ConfigEntry<KeyboardShortcut> ListKey;
-        internal static ConfigEntry<KeyboardShortcut> CycleLoadoutKey;
+        internal static ConfigEntry<KeyboardShortcut> CycleNextSummonLoadoutKey;
         internal static ConfigEntry<bool> ShowCounter;
         internal static ConfigEntry<bool> ShowDetails;
         internal static ConfigEntry<float> CounterPositionY;
@@ -46,7 +49,7 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<float> GlowIntensity;
         internal static ConfigEntry<float> GlowRange;
         internal static ConfigEntry<bool> DeathNotifications;
-        internal static ConfigEntry<SkeletonLoadout> SummonLoadout;
+        internal static ConfigEntry<SkeletonLoadout> NextSummonLoadout;
 
         // The local player's skeletons as of the last scan; read by the Harmony patches.
         private static readonly HashSet<Character> Owned = new HashSet<Character>();
@@ -79,11 +82,12 @@ namespace ValheimSkeletonTracker
                 "Dismisses skeletons (like /sk dismiss)." + hotkeyNote);
             ListKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
                 "Lists your skeletons in chat (like /sk list).");
-            CycleLoadoutKey = Config.Bind("Hotkeys", "CycleLoadout", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt),
-                "Switches the Summon.Loadout option: Random -> SwordAndShield -> Bow.");
+            CycleNextSummonLoadoutKey = Config.Bind("Hotkeys", "CycleNextSummonLoadout", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt),
+                "Switches the weapons of your next summoned skeletons (Summon.NextSummonLoadout): " +
+                "Random -> SwordAndShield -> Bow.");
 
-            SummonLoadout = Config.Bind("Summon", "Loadout", SkeletonLoadout.Random,
-                "Weapons of newly summoned skeletons: Random (game default), SwordAndShield or Bow. " +
+            NextSummonLoadout = Config.Bind("Summon", "NextSummonLoadout", SkeletonLoadout.Random,
+                "Weapons of the skeletons you summon next: Random (game default), SwordAndShield or Bow. " +
                 "Already summoned skeletons keep their weapons.");
 
             DeathNotifications = Config.Bind("Notifications", "Death", true,
@@ -113,6 +117,10 @@ namespace ValheimSkeletonTracker
                 new ConfigDescription("Glow brightness.", new AcceptableValueRange<float>(0f, 5f)));
             GlowRange = Config.Bind("Glow", "Range", 3f,
                 new ConfigDescription("Glow range (m).", new AcceptableValueRange<float>(0.5f, 10f)));
+
+            // Keys renamed in 1.6.0 to make clear they apply to the next summon.
+            MigrateRenamedEntry(CycleNextSummonLoadoutKey, "Hotkeys", "CycleLoadout");
+            MigrateRenamedEntry(NextSummonLoadout, "Summon", "Loadout");
 
             SkeletonCommands.Register();
             _harmony = Harmony.CreateAndPatchAll(typeof(SkeletonPatches), PluginGuid);
@@ -190,12 +198,35 @@ namespace ValheimSkeletonTracker
                 // The chat window hides itself until opened; reset its timer so the list is visible.
                 ChatHideTimer(Chat.instance) = 0f;
             }
-            else if (CycleLoadoutKey.Value.IsDown())
+            else if (CycleNextSummonLoadoutKey.Value.IsDown())
             {
                 // Setting the value also saves it to the config file.
-                SummonLoadout.Value = (SkeletonLoadout)(((int)SummonLoadout.Value + 1) % 3);
-                _hud.ShowNotice($"Summon loadout: {SummonLoadout.Value}");
+                NextSummonLoadout.Value = (SkeletonLoadout)(((int)NextSummonLoadout.Value + 1) % 3);
+                _hud.ShowNotice($"Next summon: {DescribeLoadout(NextSummonLoadout.Value)}");
             }
+        }
+
+        private static string DescribeLoadout(SkeletonLoadout loadout)
+        {
+            switch (loadout)
+            {
+                case SkeletonLoadout.SwordAndShield: return "sword & shield";
+                case SkeletonLoadout.Bow: return "bow";
+                default: return "random weapon";
+            }
+        }
+
+        // Carries a value over from a key's old name, then drops the old key from the config file.
+        // Values in the file that no Bind call claimed are kept by BepInEx as orphaned entries.
+        private void MigrateRenamedEntry(ConfigEntryBase entry, string oldSection, string oldKey)
+        {
+            var orphaned = ConfigOrphanedEntries(Config);
+            var oldDefinition = new ConfigDefinition(oldSection, oldKey);
+            if (!orphaned.TryGetValue(oldDefinition, out var value))
+                return;
+            entry.SetSerializedValue(value);
+            orphaned.Remove(oldDefinition);
+            Config.Save();
         }
 
         private static void ShowMessage(Player player, string text)

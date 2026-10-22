@@ -50,7 +50,7 @@ To uninstall, delete the `BepInEx/plugins/SkeletonTracker/` folder (and optional
 | Left Alt + G | skeletons stay in place |
 | Left Alt + H | dismiss skeletons |
 | Left Alt + J | list skeletons in chat |
-| Left Alt + K | switch the loadout of newly summoned skeletons (Random → SwordAndShield → Bow) |
+| Left Alt + K | switch the weapons of your next summoned skeletons (Random → SwordAndShield → Bow) |
 
 When you aim at one of your skeletons, the Follow / Stay / Dismiss hotkeys affect only that skeleton
 (the key hints appear in its hover text). Hotkeys are ignored while typing in chat and in menus,
@@ -83,8 +83,8 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 | `Hotkeys` | `Stay` | `G + LeftAlt` | stay hotkey |
 | `Hotkeys` | `Dismiss` | `H + LeftAlt` | dismiss hotkey |
 | `Hotkeys` | `List` | `J + LeftAlt` | list-in-chat hotkey |
-| `Hotkeys` | `CycleLoadout` | `K + LeftAlt` | hotkey switching `Summon.Loadout` |
-| `Summon` | `Loadout` | `Random` | weapons of newly summoned skeletons: `Random`, `SwordAndShield` or `Bow` |
+| `Hotkeys` | `CycleNextSummonLoadout` | `K + LeftAlt` | hotkey switching `Summon.NextSummonLoadout` |
+| `Summon` | `NextSummonLoadout` | `Random` | weapons of the skeletons you summon next: `Random`, `SwordAndShield` or `Bow` |
 | `Notifications` | `Death` | `true` | message when a skeleton dies |
 | `HUD` | `ShowCounter` | `true` | skeleton counter below the minimap |
 | `HUD` | `ShowDetails` | `true` | detailed skeleton list below the counter |

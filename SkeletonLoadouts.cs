@@ -25,7 +25,7 @@ namespace ValheimSkeletonTracker
         // Called before Humanoid.GiveDefaultItems.
         public static void Apply(Humanoid humanoid)
         {
-            var loadout = SkeletonTrackerPlugin.SummonLoadout.Value;
+            var loadout = SkeletonTrackerPlugin.NextSummonLoadout.Value;
             if (loadout == SkeletonLoadout.Random || !SummonedSkeletons.IsSummonedSkeleton(humanoid))
                 return;
 
