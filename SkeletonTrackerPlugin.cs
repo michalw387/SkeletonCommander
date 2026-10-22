@@ -186,24 +186,33 @@ namespace ValheimSkeletonTracker
             var hovered = player.GetHoverCreature();
             var only = IsOwned(hovered) ? hovered : null;
 
-            if (FollowKey.Value.IsDown())
+            if (IsPressed(FollowKey.Value))
                 ShowMessage(player, SkeletonCommands.Follow(player, only));
-            else if (StayKey.Value.IsDown())
+            else if (IsPressed(StayKey.Value))
                 ShowMessage(player, SkeletonCommands.Stay(player, only));
-            else if (DismissKey.Value.IsDown())
+            else if (IsPressed(DismissKey.Value))
                 ShowMessage(player, SkeletonCommands.Dismiss(player, only));
-            else if (ListKey.Value.IsDown() && Chat.instance != null)
+            else if (IsPressed(ListKey.Value) && Chat.instance != null)
             {
                 SkeletonCommands.List(Chat.instance, player);
                 // The chat window hides itself until opened; reset its timer so the list is visible.
                 ChatHideTimer(Chat.instance) = 0f;
             }
-            else if (CycleNextSummonLoadoutKey.Value.IsDown())
+            else if (IsPressed(CycleNextSummonLoadoutKey.Value))
             {
                 // Setting the value also saves it to the config file.
                 NextSummonLoadout.Value = (SkeletonLoadout)(((int)NextSummonLoadout.Value + 1) % 3);
                 _hud.ShowNotice($"Next summon: {DescribeLoadout(NextSummonLoadout.Value)}");
             }
+        }
+
+        // KeyboardShortcut.IsDown() fails while any other key is held (e.g. W while running),
+        // so only the shortcut's own keys are checked.
+        private static bool IsPressed(KeyboardShortcut shortcut)
+        {
+            return shortcut.MainKey != KeyCode.None
+                && UnityInput.Current.GetKeyDown(shortcut.MainKey)
+                && shortcut.Modifiers.All(UnityInput.Current.GetKey);
         }
 
         private static string DescribeLoadout(SkeletonLoadout loadout)
