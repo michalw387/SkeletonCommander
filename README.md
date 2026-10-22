@@ -53,9 +53,6 @@ r2modman or the Thunderstore Mod Manager; BepInExPack Valheim is installed with 
 
 To uninstall, delete the `BepInEx/plugins/SkeletonCommander/` folder (and optionally the `.cfg` file).
 
-The mod used to be called **Skeleton Tracker**. When upgrading, delete the old
-`BepInEx/plugins/SkeletonTracker/` folder; your settings are taken over from the old config file.
-
 ## Controls
 
 ### Hotkeys
@@ -126,33 +123,6 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 
 Hotkeys are written as the main key followed by modifiers, e.g. `F + LeftAlt`. Key names are Unity
 `KeyCode` values (e.g. `Keypad1`, `F7`, `Mouse3`); `None` disables the hotkey.
-
-## Building from source
-
-Requires the .NET SDK (the project targets `netstandard2.1`).
-
-1. Copy the game and BepInEx libraries into the `lib/` folder (they are not part of the repository):
-   - from `<Valheim>/valheim_Data/Managed/`: `assembly_valheim.dll`, `assembly_utils.dll`,
-     `assembly_guiutils.dll`, `Splatform.dll`, `UnityEngine.dll`, `UnityEngine.CoreModule.dll`,
-     `UnityEngine.TextRenderingModule.dll`, `UnityEngine.UI.dll`, `UnityEngine.UIModule.dll`,
-     `Unity.TextMeshPro.dll`, `Unity.InputSystem.dll`
-   - from `<Valheim>/BepInEx/core/`: `BepInEx.dll`, `0Harmony.dll`
-2. Build:
-   ```
-   dotnet build
-   ```
-   After compiling, the DLL is copied automatically to the plugins folder set by the
-   `ValheimPluginsDir` property in `SkeletonCommander.csproj`. You can pass a different path
-   when building:
-   ```
-   dotnet build -p:ValheimPluginsDir=/path/to/Valheim/BepInEx/plugins/SkeletonCommander/
-   ```
-
-   A Release build also creates the Thunderstore package `bin/thunderstore/SkeletonCommander-<version>.zip`
-   (manifest from `thunderstore/manifest.json`, version from `PluginVersion` in `SkeletonCommanderPlugin.cs`):
-   ```
-   dotnet build -c Release
-   ```
 
 ## License
 
