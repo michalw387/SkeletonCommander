@@ -3,6 +3,9 @@
 A Valheim mod (BepInEx 5) for tracking and commanding the skeletons summoned with the
 **Dead Raiser** staff. The mod is client-side only and affects only the skeletons you summoned.
 
+**Client-side:** only the players who want to use the mod need to install it. It is not required
+on dedicated servers or by other players, who also see the weapon chosen for your skeletons.
+
 ## Features
 
 - **Minimap pins** – each of your skeletons gets a map pin with the skeleton trophy icon, updated
