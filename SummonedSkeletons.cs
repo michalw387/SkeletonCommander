@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace ValheimSkeletonTracker
 {
@@ -59,6 +60,35 @@ namespace ValheimSkeletonTracker
             var nview = skeleton.GetComponent<ZNetView>();
             if (nview != null && nview.IsValid())
                 nview.InvokeRPC(ZNetView.Everybody, "RPC_UnSummon");
+        }
+
+        public static string GetName(Character skeleton)
+        {
+            return Localization.instance.Localize(skeleton.GetHoverName());
+        }
+
+        public static string GetWeaponName(Character skeleton)
+        {
+            var weapon = (skeleton as Humanoid)?.GetCurrentWeapon();
+            if (weapon == null)
+                return "brak broni";
+            switch (weapon.m_shared.m_skillType)
+            {
+                case Skills.SkillType.Bows: return "łuk";
+                case Skills.SkillType.Swords: return "miecz";
+                case Skills.SkillType.Clubs: return "maczuga";
+                case Skills.SkillType.Axes: return "topór";
+                case Skills.SkillType.Unarmed: return "bez broni";
+                default: return Localization.instance.Localize(weapon.m_shared.m_name);
+            }
+        }
+
+        // One line used by both the chat list and the detailed HUD.
+        public static string Describe(Character skeleton, Player player)
+        {
+            float distance = Vector3.Distance(player.transform.position, skeleton.transform.position);
+            string state = IsFollowing(skeleton, player) ? "podąża" : "czeka";
+            return $"{GetName(skeleton)} · {GetWeaponName(skeleton)} · HP {skeleton.GetHealth():0}/{skeleton.GetMaxHealth():0} · {distance:0} m · {state}";
         }
     }
 }

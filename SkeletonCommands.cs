@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace ValheimSkeletonTracker
 {
     // Skeleton actions shared by the chat/console command (/sk [list|follow|stay|dismiss]) and the hotkeys.
+    // Actions apply to all of the player's skeletons, or only to `only` when given.
     internal static class SkeletonCommands
     {
         private static readonly List<string> Subcommands = new List<string> { "list", "follow", "stay", "dismiss" };
@@ -45,46 +45,48 @@ namespace ValheimSkeletonTracker
             }
         }
 
-        public static string Follow(Player player)
+        public static string Follow(Player player, Character only = null)
         {
-            var skeletons = FindOwned(player);
+            var skeletons = Targets(player, only);
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.SetFollowing(skeleton, player, follow: true);
-            return $"Szkielety idą za tobą: {skeletons.Count}";
+            return only != null
+                ? $"{SummonedSkeletons.GetName(only)} idzie za tobą"
+                : $"Szkielety idą za tobą: {skeletons.Count}";
         }
 
-        public static string Stay(Player player)
+        public static string Stay(Player player, Character only = null)
         {
-            var skeletons = FindOwned(player);
+            var skeletons = Targets(player, only);
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.SetFollowing(skeleton, player, follow: false);
-            return $"Szkielety czekają w miejscu: {skeletons.Count}";
+            return only != null
+                ? $"{SummonedSkeletons.GetName(only)} czeka w miejscu"
+                : $"Szkielety czekają w miejscu: {skeletons.Count}";
         }
 
-        public static string Dismiss(Player player)
+        public static string Dismiss(Player player, Character only = null)
         {
-            var skeletons = FindOwned(player);
+            var skeletons = Targets(player, only);
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.Dismiss(skeleton);
-            return $"Odwołano szkielety: {skeletons.Count}";
+            return only != null
+                ? $"Odwołano: {SummonedSkeletons.GetName(only)}"
+                : $"Odwołano szkielety: {skeletons.Count}";
         }
 
         public static void List(Terminal terminal, Player player)
         {
-            var skeletons = FindOwned(player);
+            var skeletons = Targets(player, null);
             terminal.AddString($"Twoje szkielety: {skeletons.Count}");
-            var playerPos = player.transform.position;
             for (int i = 0; i < skeletons.Count; i++)
-            {
-                var skeleton = skeletons[i];
-                float distance = Vector3.Distance(playerPos, skeleton.transform.position);
-                string state = SummonedSkeletons.IsFollowing(skeleton, player) ? "podąża" : "czeka";
-                terminal.AddString($"  #{i + 1}  HP {skeleton.GetHealth():0}/{skeleton.GetMaxHealth():0}  {distance:0} m  {state}");
-            }
+                terminal.AddString($"  #{i + 1}  {SummonedSkeletons.Describe(skeletons[i], player)}");
         }
 
-        private static List<Character> FindOwned(Player player)
+        private static List<Character> Targets(Player player, Character only)
         {
+            if (only != null)
+                return new List<Character> { only };
             var skeletons = new List<Character>();
             SummonedSkeletons.FindOwned(player, skeletons);
             return skeletons;

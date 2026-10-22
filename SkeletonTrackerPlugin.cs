@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
@@ -12,12 +14,13 @@ namespace ValheimSkeletonTracker
     {
         public const string PluginGuid = "michal.valheim.skeletontracker";
         public const string PluginName = "Skeleton Tracker";
-        public const string PluginVersion = "1.2.0";
+        public const string PluginVersion = "1.3.0";
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
         private const string PinNameFollowing = "Szkielet";
         private const string PinNameStaying = "Szkielet (czeka)";
+        private const string GlowObjectName = "SkeletonTracker_Glow";
 
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
@@ -27,40 +30,80 @@ namespace ValheimSkeletonTracker
         private static readonly Func<Player, bool> PlayerTakesInput =
             AccessTools.MethodDelegate<Func<Player, bool>>(AccessTools.Method(typeof(Player), "TakeInput"));
 
-        private ConfigEntry<KeyboardShortcut> _followKey;
-        private ConfigEntry<KeyboardShortcut> _stayKey;
-        private ConfigEntry<KeyboardShortcut> _dismissKey;
-        private ConfigEntry<KeyboardShortcut> _listKey;
-        private ConfigEntry<bool> _showCounter;
-        private ConfigEntry<float> _counterPositionY;
+        internal static ConfigEntry<KeyboardShortcut> FollowKey;
+        internal static ConfigEntry<KeyboardShortcut> StayKey;
+        internal static ConfigEntry<KeyboardShortcut> DismissKey;
+        internal static ConfigEntry<KeyboardShortcut> ListKey;
+        internal static ConfigEntry<bool> ShowCounter;
+        internal static ConfigEntry<bool> ShowDetails;
+        internal static ConfigEntry<float> CounterPositionY;
+        internal static ConfigEntry<bool> HealthBars;
+        internal static ConfigEntry<float> HealthBarDistance;
+        internal static ConfigEntry<bool> GlowEnabled;
+        internal static ConfigEntry<Color> GlowColor;
+        internal static ConfigEntry<float> GlowIntensity;
+        internal static ConfigEntry<float> GlowRange;
+        internal static ConfigEntry<bool> DeathNotifications;
+
+        // The local player's skeletons as of the last scan; read by the Harmony patches.
+        private static readonly HashSet<Character> Owned = new HashSet<Character>();
 
         private readonly List<Character> _skeletons = new List<Character>();
         private readonly Dictionary<Character, Minimap.PinData> _pins = new Dictionary<Character, Minimap.PinData>();
         private readonly List<Character> _stale = new List<Character>();
+        private readonly HashSet<Character> _deathHooked = new HashSet<Character>();
+        private readonly SkeletonHud _hud = new SkeletonHud();
+        private Harmony _harmony;
         private Minimap _minimap;
         private Sprite _pinIcon;
-        private int _followingCount;
         private float _timer;
-        private GUIStyle _hudStyle;
+
+        internal static bool IsOwned(Character character)
+        {
+            return character != null && Owned.Contains(character);
+        }
 
         private void Awake()
         {
             // Written to BepInEx/config/<PluginGuid>.cfg on first launch.
-            _followKey = Config.Bind("Hotkeys", "Follow", new KeyboardShortcut(KeyCode.F, KeyCode.LeftAlt),
-                "Wszystkie szkielety idą za tobą (jak /sk follow).");
-            _stayKey = Config.Bind("Hotkeys", "Stay", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt),
-                "Wszystkie szkielety czekają w miejscu (jak /sk stay).");
-            _dismissKey = Config.Bind("Hotkeys", "Dismiss", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt),
-                "Odwołuje wszystkie szkielety (jak /sk dismiss).");
-            _listKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
+            const string hotkeyNote = " Gdy celujesz w swojego szkieleta, działa tylko na niego.";
+            FollowKey = Config.Bind("Hotkeys", "Follow", new KeyboardShortcut(KeyCode.F, KeyCode.LeftAlt),
+                "Szkielety idą za tobą (jak /sk follow)." + hotkeyNote);
+            StayKey = Config.Bind("Hotkeys", "Stay", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt),
+                "Szkielety czekają w miejscu (jak /sk stay)." + hotkeyNote);
+            DismissKey = Config.Bind("Hotkeys", "Dismiss", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt),
+                "Odwołuje szkielety (jak /sk dismiss)." + hotkeyNote);
+            ListKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
                 "Wypisuje listę szkieletów na czacie (jak /sk list).");
-            _showCounter = Config.Bind("HUD", "ShowCounter", true,
+
+            ShowCounter = Config.Bind("HUD", "ShowCounter", true,
                 "Pokazuje licznik szkieletów pod minimapą.");
-            _counterPositionY = Config.Bind("HUD", "CounterPositionY", 0.3f,
+            ShowDetails = Config.Bind("HUD", "ShowDetails", true,
+                "Pod licznikiem pokazuje każdego szkieleta: imię, broń, zdrowie, odległość i czy podąża.");
+            CounterPositionY = Config.Bind("HUD", "CounterPositionY", 0.3f,
                 new ConfigDescription("Pionowa pozycja licznika jako ułamek wysokości ekranu (0 = góra, 1 = dół).",
                     new AcceptableValueRange<float>(0f, 1f)));
 
+            HealthBars = Config.Bind("HealthBars", "AlwaysShow", true,
+                "Paski zdrowia nad głowami twoich szkieletów są zawsze widoczne.");
+            HealthBarDistance = Config.Bind("HealthBars", "MaxDistance", 40f,
+                new ConfigDescription("Maksymalna odległość (m), z której widać paski zdrowia szkieletów.",
+                    new AcceptableValueRange<float>(10f, 100f)));
+
+            GlowEnabled = Config.Bind("Glow", "Enabled", true,
+                "Delikatna poświata wokół twoich szkieletów.");
+            GlowColor = Config.Bind("Glow", "Color", new Color(0.4f, 0.85f, 1f, 1f),
+                "Kolor poświaty (RGBA w zapisie szesnastkowym).");
+            GlowIntensity = Config.Bind("Glow", "Intensity", 1.2f,
+                new ConfigDescription("Jasność poświaty.", new AcceptableValueRange<float>(0f, 5f)));
+            GlowRange = Config.Bind("Glow", "Range", 3f,
+                new ConfigDescription("Zasięg poświaty (m).", new AcceptableValueRange<float>(0.5f, 10f)));
+
+            DeathNotifications = Config.Bind("Notifications", "Death", true,
+                "Komunikat na ekranie, gdy któryś z twoich szkieletów zginie.");
+
             SkeletonCommands.Register();
+            _harmony = Harmony.CreateAndPatchAll(typeof(SkeletonPatches), PluginGuid);
         }
 
         private void Update()
@@ -84,47 +127,32 @@ namespace ValheimSkeletonTracker
             {
                 RemoveAllPins();
                 _skeletons.Clear();
-                _followingCount = 0;
+                Owned.Clear();
+                _hud.Hide();
                 return;
             }
 
             SummonedSkeletons.FindOwned(player, _skeletons);
+            Owned.Clear();
+            Owned.UnionWith(_skeletons);
+            _deathHooked.RemoveWhere(c => c == null);
 
-            _followingCount = 0;
+            int following = 0;
             foreach (var skeleton in _skeletons)
             {
-                bool following = SummonedSkeletons.IsFollowing(skeleton, player);
-                if (following)
-                    _followingCount++;
+                bool isFollowing = SummonedSkeletons.IsFollowing(skeleton, player);
+                if (isFollowing)
+                    following++;
 
-                var pos = skeleton.transform.position;
-                string name = following ? PinNameFollowing : PinNameStaying;
-                if (_pins.TryGetValue(skeleton, out var pin))
-                {
-                    if (pin.m_name == name)
-                    {
-                        pin.m_pos = pos;
-                        continue;
-                    }
-                    // The pin label is created once with the marker, so a state change needs a new pin.
-                    minimap.RemovePin(pin);
-                }
-                _pins[skeleton] = AddPin(minimap, pos, name);
+                UpdatePin(minimap, skeleton, isFollowing);
+                UpdateGlow(skeleton);
+                if (_deathHooked.Add(skeleton))
+                    skeleton.m_onDeath += () => OnSkeletonDied(skeleton);
             }
-
-            _stale.Clear();
-            foreach (var entry in _pins)
-            {
-                if (!_skeletons.Contains(entry.Key))
-                    _stale.Add(entry.Key);
-            }
-            foreach (var skeleton in _stale)
-            {
-                minimap.RemovePin(_pins[skeleton]);
-                _pins.Remove(skeleton);
-            }
-
+            RemoveStalePins(minimap);
             PinUpdateRequired(minimap) = true;
+
+            UpdateHud(player, following);
         }
 
         private void HandleHotkeys()
@@ -133,13 +161,17 @@ namespace ValheimSkeletonTracker
             if (player == null || !PlayerTakesInput(player))
                 return;
 
-            if (_followKey.Value.IsDown())
-                ShowMessage(player, SkeletonCommands.Follow(player));
-            else if (_stayKey.Value.IsDown())
-                ShowMessage(player, SkeletonCommands.Stay(player));
-            else if (_dismissKey.Value.IsDown())
-                ShowMessage(player, SkeletonCommands.Dismiss(player));
-            else if (_listKey.Value.IsDown() && Chat.instance != null)
+            // Aiming at one of our skeletons narrows the action to just that one.
+            var hovered = player.GetHoverCreature();
+            var only = IsOwned(hovered) ? hovered : null;
+
+            if (FollowKey.Value.IsDown())
+                ShowMessage(player, SkeletonCommands.Follow(player, only));
+            else if (StayKey.Value.IsDown())
+                ShowMessage(player, SkeletonCommands.Stay(player, only));
+            else if (DismissKey.Value.IsDown())
+                ShowMessage(player, SkeletonCommands.Dismiss(player, only));
+            else if (ListKey.Value.IsDown() && Chat.instance != null)
             {
                 SkeletonCommands.List(Chat.instance, player);
                 // The chat window hides itself until opened; reset its timer so the list is visible.
@@ -152,44 +184,111 @@ namespace ValheimSkeletonTracker
             player.Message(MessageHud.MessageType.Center, text);
         }
 
-        private void OnGUI()
+        internal static string GetHoverHints()
         {
-            if (!_showCounter.Value || _skeletons.Count == 0 || Hud.instance == null || Hud.IsUserHidden())
-                return;
+            return HoverHint(FollowKey.Value, "Podążaj")
+                + HoverHint(StayKey.Value, "Czekaj")
+                + HoverHint(DismissKey.Value, "Odwołaj");
+        }
 
-            if (_hudStyle == null)
+        private static string HoverHint(KeyboardShortcut key, string action)
+        {
+            if (key.MainKey == KeyCode.None)
+                return "";
+            string keys = string.Join(" + ", key.Modifiers.Concat(new[] { key.MainKey }));
+            return $"\n[<color=yellow><b>{keys}</b></color>] {action}";
+        }
+
+        private void UpdateHud(Player player, int following)
+        {
+            if (!ShowCounter.Value || _skeletons.Count == 0)
             {
-                _hudStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.UpperRight,
-                    fontSize = 18,
-                    fontStyle = FontStyle.Bold
-                };
+                _hud.Hide();
+                return;
             }
 
-            int staying = _skeletons.Count - _followingCount;
-            string text = $"Szkielety: {_skeletons.Count}  (podąża {_followingCount}, czeka {staying})";
-            // Just below the small minimap in the top-right corner.
-            var rect = new Rect(Screen.width - 420, Screen.height * _counterPositionY.Value, 400, 30);
-
-            _hudStyle.normal.textColor = Color.black;
-            GUI.Label(new Rect(rect.x + 1, rect.y + 1, rect.width, rect.height), text, _hudStyle);
-            _hudStyle.normal.textColor = Color.white;
-            GUI.Label(rect, text, _hudStyle);
+            var text = new StringBuilder();
+            text.Append($"Szkielety: {_skeletons.Count}  (podąża {following}, czeka {_skeletons.Count - following})");
+            if (ShowDetails.Value)
+            {
+                foreach (var skeleton in _skeletons)
+                    text.Append("\n<size=80%>").Append(SummonedSkeletons.Describe(skeleton, player)).Append("</size>");
+            }
+            _hud.Show(text.ToString(), CounterPositionY.Value);
         }
 
-        private void OnDestroy()
+        private void OnSkeletonDied(Character skeleton)
         {
-            RemoveAllPins();
+            var player = Player.m_localPlayer;
+            if (!DeathNotifications.Value || player == null)
+                return;
+            string name = SummonedSkeletons.GetName(skeleton);
+            player.Message(MessageHud.MessageType.TopLeft, $"{name} ({SummonedSkeletons.GetWeaponName(skeleton)}) zginął",
+                0, GetPinIcon());
         }
 
-        private Minimap.PinData AddPin(Minimap minimap, Vector3 pos, string name)
+        private void UpdatePin(Minimap minimap, Character skeleton, bool following)
         {
-            var pin = minimap.AddPin(pos, Minimap.PinType.Icon3, name, save: false, isChecked: false);
+            var pos = skeleton.transform.position;
+            string name = following ? PinNameFollowing : PinNameStaying;
+            if (_pins.TryGetValue(skeleton, out var pin))
+            {
+                if (pin.m_name == name)
+                {
+                    pin.m_pos = pos;
+                    return;
+                }
+                // The pin label is created once with the marker, so a state change needs a new pin.
+                minimap.RemovePin(pin);
+            }
+
+            pin = minimap.AddPin(pos, Minimap.PinType.Icon3, name, save: false, isChecked: false);
             var icon = GetPinIcon();
             if (icon != null)
                 pin.m_icon = icon;
-            return pin;
+            _pins[skeleton] = pin;
+        }
+
+        private void RemoveStalePins(Minimap minimap)
+        {
+            _stale.Clear();
+            foreach (var entry in _pins)
+            {
+                if (!Owned.Contains(entry.Key))
+                    _stale.Add(entry.Key);
+            }
+            foreach (var skeleton in _stale)
+            {
+                minimap.RemovePin(_pins[skeleton]);
+                _pins.Remove(skeleton);
+            }
+        }
+
+        private static void UpdateGlow(Character skeleton)
+        {
+            var glow = skeleton.transform.Find(GlowObjectName);
+            if (!GlowEnabled.Value)
+            {
+                if (glow != null)
+                    Destroy(glow.gameObject);
+                return;
+            }
+
+            if (glow == null)
+            {
+                glow = new GameObject(GlowObjectName).transform;
+                glow.SetParent(skeleton.transform, worldPositionStays: false);
+                glow.localPosition = Vector3.up * 1.2f;
+                var newLight = glow.gameObject.AddComponent<Light>();
+                newLight.type = LightType.Point;
+                newLight.shadows = LightShadows.None;
+            }
+
+            // Applied every scan so config changes take effect immediately.
+            var light = glow.GetComponent<Light>();
+            light.color = GlowColor.Value;
+            light.intensity = GlowIntensity.Value;
+            light.range = GlowRange.Value;
         }
 
         // The skeleton trophy icon makes the pins easy to tell apart from regular map markers.
@@ -213,6 +312,20 @@ namespace ValheimSkeletonTracker
                     _minimap.RemovePin(pin);
             }
             _pins.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            RemoveAllPins();
+            _hud.Destroy();
+            foreach (var skeleton in Owned)
+            {
+                var glow = skeleton != null ? skeleton.transform.Find(GlowObjectName) : null;
+                if (glow != null)
+                    Destroy(glow.gameObject);
+            }
+            Owned.Clear();
+            _harmony?.UnpatchSelf();
         }
     }
 }
