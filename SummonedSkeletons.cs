@@ -41,6 +41,14 @@ namespace ValheimSkeletonTracker
                 if (following || zdo.GetLong(OwnerKey) == playerId)
                     result.Add(character);
             }
+
+            // Newest first, so the oldest skeleton ends up at the bottom of the lists.
+            result.Sort((a, b) => GetSpawnTime(b).CompareTo(GetSpawnTime(a)));
+        }
+
+        private static long GetSpawnTime(Character skeleton)
+        {
+            return skeleton.GetComponent<ZNetView>().GetZDO().GetLong(ZDOVars.s_spawnTime);
         }
 
         public static bool IsFollowing(Character skeleton, Player player)
