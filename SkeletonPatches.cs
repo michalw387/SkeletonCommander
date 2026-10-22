@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -53,6 +54,36 @@ namespace ValheimSkeletonTracker
                 bar.SetColor(SummonedSkeletons.GetHealthColor(character));
             else
                 bar.ResetColor();
+        }
+
+        // When a summon starts following its player the game unsummons the oldest ones above the limit, but
+        // it only counts skeletons following that player, so ones told to stay let you exceed the limit.
+        // For Dead Raiser skeletons count all of the player's skeletons, staying ones included.
+        [HarmonyPatch(typeof(Tameable), "UnsummonMaxInstances")]
+        [HarmonyPrefix]
+        private static bool EnforceSummonLimit(Tameable __instance, int maxInstances,
+            ZNetView ___m_nview, MonsterAI ___m_monsterAI)
+        {
+            if (!SummonedSkeletons.IsSummonedSkeleton(__instance))
+                return true;
+            if (___m_nview == null || !___m_nview.IsValid() || !___m_nview.IsOwner() || ___m_monsterAI == null)
+                return false;
+
+            var followTarget = ___m_monsterAI.GetFollowTarget();
+            var player = followTarget != null ? followTarget.GetComponent<Player>() : null;
+            if (player == null)
+                return false;
+
+            // Sorted newest first, so the oldest skeletons are at the end.
+            var skeletons = new List<Character>();
+            SummonedSkeletons.FindOwned(player, skeletons);
+            int excess = skeletons.Count - maxInstances;
+            for (int i = 0; i < excess; i++)
+                SummonedSkeletons.Dismiss(skeletons[skeletons.Count - 1 - i]);
+
+            if (excess > 0 && Player.m_localPlayer != null)
+                Player.m_localPlayer.Message(MessageHud.MessageType.Center, __instance.m_maxSummonReached);
+            return false;
         }
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GiveDefaultItems))]
