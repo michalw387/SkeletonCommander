@@ -1,0 +1,9 @@
+{
+  "name": "SkeletonCommander",
+  "version_number": "{version}",
+  "website_url": "https://github.com/michalw387/SkeletonCommander",
+  "description": "Track and command your Dead Raiser skeletons: minimap pins, HUD list, health bars, glow, hotkeys and weapon choice.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}
