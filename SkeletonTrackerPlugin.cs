@@ -258,7 +258,7 @@ namespace ValheimSkeletonTracker
             }
 
             var text = new StringBuilder();
-            text.Append($"Skeletons: {_skeletons.Count}  ({following} following, {_skeletons.Count - following} staying)");
+            text.Append($"<align=center>Skeletons: {_skeletons.Count}  ({following} following, {_skeletons.Count - following} staying)</align>");
             if (ShowDetails.Value)
             {
                 // Same numbering as the chat list (/sk list).

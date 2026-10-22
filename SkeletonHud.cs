@@ -7,6 +7,7 @@ namespace ValheimSkeletonTracker
     // the inventory cover them the same way they cover the minimap, and they hide together with the HUD.
     internal class SkeletonHud
     {
+        private const float RightMargin = 20f;
         private const float NoticeDuration = 2f;
         private const float NoticeFadeDuration = 0.5f;
 
@@ -18,13 +19,16 @@ namespace ValheimSkeletonTracker
         public void Show(string text, float positionY)
         {
             if (_list == null)
-                _list = CreateText("SkeletonTrackerHud", TextAlignmentOptions.TopRight, new Vector2(1f, 1f), new Vector2(-20f, 0f));
+                _list = CreateText("SkeletonTrackerHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
             if (_list == null)
                 return;
 
             _list.text = text;
             var rect = _list.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f - positionY);
+            // Lines are left-aligned inside a box as wide as the longest line, and the box keeps a fixed
+            // distance from the right screen edge, so the longest line ends at that margin.
+            rect.sizeDelta = new Vector2(Mathf.Ceil(_list.GetPreferredValues(text).x), rect.sizeDelta.y);
             _list.gameObject.SetActive(true);
         }
 
