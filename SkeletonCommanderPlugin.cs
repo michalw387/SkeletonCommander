@@ -15,7 +15,7 @@ namespace SkeletonCommander
     {
         public const string PluginGuid = "michal.valheim.skeletoncommander";
         public const string PluginName = "Skeleton Commander";
-        public const string PluginVersion = "1.7.0";
+        public const string PluginVersion = "1.7.1";
         // The mod was called Skeleton Tracker before; its config file is taken over on first launch.
         private const string OldConfigFileName = "michal.valheim.skeletontracker.cfg";
 
