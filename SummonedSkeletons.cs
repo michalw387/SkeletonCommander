@@ -7,6 +7,7 @@ namespace ValheimSkeletonTracker
     internal static class SummonedSkeletons
     {
         private const string Prefab = "Skeleton_Friendly";
+        private const string DigitWidth = "0.55em";
 
         // The game only records the follow target (by player name) and clears it when a skeleton
         // is told to stay, so we remember the summoner's ID on the skeleton's ZDO ourselves.
@@ -83,12 +84,26 @@ namespace ValheimSkeletonTracker
             }
         }
 
+        // Green above 60% health, yellow above 30%, red below.
+        public static Color GetHealthColor(Character skeleton)
+        {
+            float health = skeleton.GetHealthPercentage();
+            if (health > 0.6f)
+                return new Color(0.3f, 0.9f, 0.3f);
+            if (health > 0.3f)
+                return new Color(1f, 0.85f, 0.2f);
+            return new Color(1f, 0.25f, 0.2f);
+        }
+
         // One line used by both the chat list and the detailed HUD.
         public static string Describe(Character skeleton, Player player)
         {
             float distance = Vector3.Distance(player.transform.position, skeleton.transform.position);
             string state = IsFollowing(skeleton, player) ? "podąża" : "czeka";
-            return $"{GetName(skeleton)} · {GetWeaponName(skeleton)} · HP {skeleton.GetHealth():0}/{skeleton.GetMaxHealth():0} · {distance:0} m · {state}";
+            string hpColor = ColorUtility.ToHtmlStringRGB(GetHealthColor(skeleton));
+            // Numbers are padded and monospaced so the right-aligned HUD line keeps its width as they change.
+            return $"{GetName(skeleton)} · {GetWeaponName(skeleton)} · <color=#{hpColor}>HP <mspace={DigitWidth}>{skeleton.GetHealth(),3:0}/{skeleton.GetMaxHealth(),-3:0}</mspace></color>"
+                + $" · <mspace={DigitWidth}>{distance,3:0}</mspace> m · {state}";
         }
     }
 }

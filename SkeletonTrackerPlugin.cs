@@ -39,6 +39,7 @@ namespace ValheimSkeletonTracker
         internal static ConfigEntry<float> CounterPositionY;
         internal static ConfigEntry<bool> HealthBars;
         internal static ConfigEntry<float> HealthBarDistance;
+        internal static ConfigEntry<bool> HealthBarColors;
         internal static ConfigEntry<bool> GlowEnabled;
         internal static ConfigEntry<Color> GlowColor;
         internal static ConfigEntry<float> GlowIntensity;
@@ -89,6 +90,8 @@ namespace ValheimSkeletonTracker
             HealthBarDistance = Config.Bind("HealthBars", "MaxDistance", 40f,
                 new ConfigDescription("Maksymalna odległość (m), z której widać paski zdrowia szkieletów.",
                     new AcceptableValueRange<float>(10f, 100f)));
+            HealthBarColors = Config.Bind("HealthBars", "ColorByHealth", true,
+                "Koloruje paski zdrowia nad szkieletami według HP: zielony > 60%, żółty > 30%, czerwony poniżej.");
 
             GlowEnabled = Config.Bind("Glow", "Enabled", true,
                 "Delikatna poświata wokół twoich szkieletów.");
