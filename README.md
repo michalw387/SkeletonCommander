@@ -10,15 +10,18 @@ A Valheim mod (BepInEx 5) that makes it easier to track and command the skeleton
 - **HUD counter** – below the minimap: how many skeletons you have and how many are following you
   or staying. Optionally a detailed, numbered list: name, weapon (bow or sword & shield), HP (colored
   by health), distance and state. Skeletons are sorted newest first, so the oldest one is at the bottom;
-  the numbers match the chat list.
+  the numbers match the chat list. Each part of the HUD can be hidden in the config.
   The HUD is part of the game's interface, so the inventory and menus cover it like the minimap.
 - **Health bars** – always visible above your skeletons' heads (up to 40 m by default), colored by
   HP: green above 60%, yellow above 30%, red below.
 - **Glow** – a subtle light around your skeletons so they are easy to tell apart.
 - **Death notifications** – an on-screen message when one of your skeletons dies.
 - **Summon loadout** – choose whether newly summoned skeletons get a sword and shield or a bow
-  (random by default), in the config or with a hotkey. The weapon stays the same after reloading and
-  is the same for other players.
+  (random by default), in the config or with a hotkey. With `SwordAndShield` a new skeleton always
+  gets a shield, never just a sword. The weapon stays the same after reloading and is the same for
+  other players.
+- **Summon limit fix** – skeletons told to stay count toward the Dead Raiser's summon limit, so you
+  cannot exceed it by leaving skeletons behind (the oldest one is dismissed instead, as in vanilla).
 - **Commands and hotkeys** – follow, stay and dismiss for all skeletons at once, or only for the one
   you are aiming at (the hover text shows the hotkeys).
 
@@ -56,6 +59,10 @@ When you aim at one of your skeletons, the Follow / Stay / Dismiss hotkeys affec
 (the key hints appear in its hover text). Hotkeys are ignored while typing in chat and in menus,
 the inventory and the large map.
 
+Hotkeys also work while you hold other keys, e.g. while running. While a hotkey's modifier is held
+(Left Alt by default), the game ignores that hotkey's key, so Left Alt + F / G do not also trigger
+the Forsaken power or the emote wheel.
+
 ### Chat commands
 
 Type in chat (Enter), or in the F5 console without the slash:
@@ -88,7 +95,14 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 | `Notifications` | `Death` | `true` | message when a skeleton dies |
 | `HUD` | `ShowCounter` | `true` | skeleton counter below the minimap |
 | `HUD` | `ShowDetails` | `true` | detailed skeleton list below the counter |
+| `HUD` | `ShowStateSummary` | `true` | following / staying counts next to the counter |
+| `HUD` | `ShowName` | `true` | skeleton names in the detailed list |
+| `HUD` | `ShowWeapon` | `true` | weapons in the detailed list |
+| `HUD` | `ShowHealth` | `true` | HP in the detailed list |
+| `HUD` | `ShowDistance` | `true` | distance from you in the detailed list |
+| `HUD` | `ShowState` | `true` | following / staying in the detailed list |
 | `HUD` | `CounterPositionY` | `0.3` | vertical counter position (0 = top, 1 = bottom of the screen) |
+| `HUD` | `FontSize` | `18` | HUD font size; the whole box scales with it (10–40) |
 | `HealthBars` | `AlwaysShow` | `true` | health bars always visible |
 | `HealthBars` | `MaxDistance` | `40` | health bar visibility range (10–100 m) |
 | `HealthBars` | `ColorByHealth` | `true` | color health bars by HP |
@@ -108,7 +122,7 @@ Requires the .NET SDK (the project targets `netstandard2.1`).
    - from `<Valheim>/valheim_Data/Managed/`: `assembly_valheim.dll`, `assembly_utils.dll`,
      `assembly_guiutils.dll`, `Splatform.dll`, `UnityEngine.dll`, `UnityEngine.CoreModule.dll`,
      `UnityEngine.TextRenderingModule.dll`, `UnityEngine.UI.dll`, `UnityEngine.UIModule.dll`,
-     `Unity.TextMeshPro.dll`
+     `Unity.TextMeshPro.dll`, `Unity.InputSystem.dll`
    - from `<Valheim>/BepInEx/core/`: `BepInEx.dll`, `0Harmony.dll`
 2. Build:
    ```
