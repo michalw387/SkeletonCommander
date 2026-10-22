@@ -12,5 +12,5 @@
 
 ## Zasady i Konwencje
 - Wykorzystuj BepInEx 5 oraz Harmony.
-- Plik `.csproj` zawiera MSBuild Target (`AfterTargets="Build"`), który po `dotnet build` kopiuje plik `.dll` do BepInEx/plugins. Nie używaj komend `cp` w bashu.
+- Plik `.csproj` zawiera MSBuild Target (`AfterTargets="Build"`), który po `dotnet build` kopiuje plik `.dll` do BepInEx/plugins
 - W przypadku braku pewności co do metod lub zmiennych z Valheim, najpierw wykonaj `ilspycmd` na odpowiedniej klasie z `./lib/assembly_valheim.dll`.
