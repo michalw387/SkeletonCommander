@@ -121,6 +121,7 @@ namespace ValheimSkeletonTracker
         private void Update()
         {
             HandleHotkeys();
+            _hud.Update();
 
             _timer += Time.deltaTime;
             if (_timer < ScanInterval)
@@ -193,7 +194,7 @@ namespace ValheimSkeletonTracker
             {
                 // Setting the value also saves it to the config file.
                 SummonLoadout.Value = (SkeletonLoadout)(((int)SummonLoadout.Value + 1) % 3);
-                ShowMessage(player, $"Summon loadout: {SummonLoadout.Value}");
+                _hud.ShowNotice($"Summon loadout: {SummonLoadout.Value}");
             }
         }
 
