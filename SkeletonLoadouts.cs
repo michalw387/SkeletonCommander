@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using HarmonyLib;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     internal enum SkeletonLoadout
     {
@@ -28,7 +28,7 @@ namespace ValheimSkeletonTracker
         // Called after Humanoid.GiveDefaultItems.
         public static void Apply(Humanoid humanoid)
         {
-            var loadout = SkeletonTrackerPlugin.NextSummonLoadout.Value;
+            var loadout = SkeletonCommanderPlugin.NextSummonLoadout.Value;
             if (_rerolling || loadout == SkeletonLoadout.Random || !SummonedSkeletons.IsSummonedSkeleton(humanoid))
                 return;
 

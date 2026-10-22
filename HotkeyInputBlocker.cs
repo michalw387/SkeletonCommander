@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     // While a shortcut's modifiers are held, the game must not react to its main key: with Alt held,
     // F (Forsaken power) and G (emote wheel) should only trigger the mod's action.
@@ -45,7 +45,7 @@ namespace ValheimSkeletonTracker
             _blockedFrame = Time.frameCount;
 
             Blocked.Clear();
-            foreach (var entry in SkeletonTrackerPlugin.Hotkeys)
+            foreach (var entry in SkeletonCommanderPlugin.Hotkeys)
             {
                 var shortcut = entry.Value;
                 // A shortcut without modifiers would take its key away from the game entirely.

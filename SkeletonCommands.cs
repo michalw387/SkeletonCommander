@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     // Skeleton actions shared by the chat/console command (/sk [list|follow|stay|dismiss]) and the hotkeys.
     // Actions apply to all of the player's skeletons, or only to `only` when given.

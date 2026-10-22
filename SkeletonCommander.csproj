@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>ValheimSkeletonTracker</AssemblyName>
-    <RootNamespace>ValheimSkeletonTracker</RootNamespace>
+    <AssemblyName>SkeletonCommander</AssemblyName>
+    <RootNamespace>SkeletonCommander</RootNamespace>
     <LangVersion>latest</LangVersion>
     <!-- assembly_valheim references a newer System.Net.Http than the SDK; the mod doesn't use it. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
-    <ValheimPluginsDir>/home/michal/snap/steam/common/.steam/steam/steamapps/common/Valheim/BepInEx/plugins/SkeletonTracker/</ValheimPluginsDir>
+    <ValheimPluginsDir>/home/michal/snap/steam/common/.steam/steam/steamapps/common/Valheim/BepInEx/plugins/SkeletonCommander/</ValheimPluginsDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -67,6 +67,27 @@
 
   <Target Name="DeployToBepInEx" AfterTargets="Build">
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ValheimPluginsDir)" />
+  </Target>
+
+  <!-- `dotnet build -c Release` also packs the mod for Thunderstore into bin/thunderstore/.
+       The version comes from PluginVersion in SkeletonCommanderPlugin.cs. -->
+  <PropertyGroup>
+    <PluginVersion>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/SkeletonCommanderPlugin.cs')), '(?s).*PluginVersion = "([^"]+)".*', '$1'))</PluginVersion>
+    <ThunderstoreStagingDir>$(BaseIntermediateOutputPath)thunderstore/</ThunderstoreStagingDir>
+    <ThunderstorePackage>$(MSBuildProjectDirectory)/bin/thunderstore/SkeletonCommander-$(PluginVersion).zip</ThunderstorePackage>
+  </PropertyGroup>
+
+  <Target Name="PackThunderstore" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <ThunderstoreManifest>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/thunderstore/manifest.json').Replace('{version}', '$(PluginVersion)'))</ThunderstoreManifest>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ThunderstoreStagingDir)" />
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(ThunderstorePackage)))" />
+    <Copy SourceFiles="thunderstore/icon.png;README.md;LICENSE" DestinationFolder="$(ThunderstoreStagingDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ThunderstoreStagingDir)plugins/" />
+    <WriteLinesToFile File="$(ThunderstoreStagingDir)manifest.json" Lines="$(ThunderstoreManifest)" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(ThunderstoreStagingDir)" DestinationFile="$(ThunderstorePackage)" Overwrite="true" />
+    <Message Importance="high" Text="Thunderstore package: $(ThunderstorePackage)" />
   </Target>
 
 </Project>

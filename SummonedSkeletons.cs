@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     // Finds and commands the skeletons the local player summoned with the Dead Raiser.
     internal static class SummonedSkeletons
@@ -11,6 +11,7 @@ namespace ValheimSkeletonTracker
 
         // The game only records the follow target (by player name) and clears it when a skeleton
         // is told to stay, so we remember the summoner's ID on the skeleton's ZDO ourselves.
+        // Keeps the mod's former name so skeletons summoned with older versions are still recognised.
         private const string OwnerKey = "SkeletonTracker_owner";
 
         public static bool IsSummonedSkeleton(Component component)

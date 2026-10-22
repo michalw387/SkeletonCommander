@@ -4,7 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     [HarmonyPatch]
     internal static class SkeletonPatches
@@ -19,9 +19,9 @@ namespace ValheimSkeletonTracker
         [HarmonyPostfix]
         private static void ExtendHealthBarRange(Character c, Vector3 ___m_refPoint, ref bool __result)
         {
-            if (__result || !SkeletonTrackerPlugin.HealthBars.Value || !SkeletonTrackerPlugin.IsOwned(c))
+            if (__result || !SkeletonCommanderPlugin.HealthBars.Value || !SkeletonCommanderPlugin.IsOwned(c))
                 return;
-            float max = SkeletonTrackerPlugin.HealthBarDistance.Value;
+            float max = SkeletonCommanderPlugin.HealthBarDistance.Value;
             __result = (c.transform.position - ___m_refPoint).sqrMagnitude < max * max;
         }
 
@@ -34,10 +34,10 @@ namespace ValheimSkeletonTracker
             foreach (DictionaryEntry hud in (IDictionary)___m_huds)
             {
                 var character = (Character)hud.Key;
-                if (!SkeletonTrackerPlugin.IsOwned(character))
+                if (!SkeletonCommanderPlugin.IsOwned(character))
                     continue;
 
-                if (SkeletonTrackerPlugin.HealthBars.Value)
+                if (SkeletonCommanderPlugin.HealthBars.Value)
                     HudHoverTimer.SetValue(hud.Value, 0f);
 
                 SetBarColor((GuiBar)HudHealthFast.GetValue(hud.Value), character);
@@ -50,7 +50,7 @@ namespace ValheimSkeletonTracker
         {
             if (bar == null)
                 return;
-            if (SkeletonTrackerPlugin.HealthBarColors.Value)
+            if (SkeletonCommanderPlugin.HealthBarColors.Value)
                 bar.SetColor(SummonedSkeletons.GetHealthColor(character));
             else
                 bar.ResetColor();
@@ -118,8 +118,8 @@ namespace ValheimSkeletonTracker
         [HarmonyPostfix]
         private static void AddHotkeyHints(Tameable __instance, ref string __result)
         {
-            if (SkeletonTrackerPlugin.IsOwned(__instance.GetComponent<Character>()))
-                __result += SkeletonTrackerPlugin.GetHoverHints();
+            if (SkeletonCommanderPlugin.IsOwned(__instance.GetComponent<Character>()))
+                __result += SkeletonCommanderPlugin.GetHoverHints();
         }
     }
 }

@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     // Skeleton counter/list and short notices drawn as part of the game's HUD canvas, so windows like
     // the inventory cover them the same way they cover the minimap, and they hide together with the HUD.
@@ -19,7 +19,7 @@ namespace ValheimSkeletonTracker
         public void Show(string text, float positionY, float fontSize)
         {
             if (_list == null)
-                _list = CreateText("SkeletonTrackerHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
+                _list = CreateText("SkeletonCommanderHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
             if (_list == null)
                 return;
 
@@ -45,7 +45,7 @@ namespace ValheimSkeletonTracker
         {
             if (_notice == null)
             {
-                _notice = CreateText("SkeletonTrackerNotice", TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero);
+                _notice = CreateText("SkeletonCommanderNotice", TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero);
                 if (_notice == null)
                     return;
                 var rect = _notice.rectTransform;

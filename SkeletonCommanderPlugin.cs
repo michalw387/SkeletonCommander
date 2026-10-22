@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using BepInEx;
@@ -7,20 +8,22 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 
-namespace ValheimSkeletonTracker
+namespace SkeletonCommander
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-    public class SkeletonTrackerPlugin : BaseUnityPlugin
+    public class SkeletonCommanderPlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "michal.valheim.skeletontracker";
-        public const string PluginName = "Skeleton Tracker";
-        public const string PluginVersion = "1.6.0";
+        public const string PluginGuid = "michal.valheim.skeletoncommander";
+        public const string PluginName = "Skeleton Commander";
+        public const string PluginVersion = "1.7.0";
+        // The mod was called Skeleton Tracker before; its config file is taken over on first launch.
+        private const string OldConfigFileName = "michal.valheim.skeletontracker.cfg";
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
         private const string PinNameFollowing = "Skeleton";
         private const string PinNameStaying = "Skeleton (staying)";
-        private const string GlowObjectName = "SkeletonTracker_Glow";
+        private const string GlowObjectName = "SkeletonCommander_Glow";
 
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
@@ -78,6 +81,8 @@ namespace ValheimSkeletonTracker
 
         private void Awake()
         {
+            MigrateOldConfigFile();
+
             // Written to BepInEx/config/<PluginGuid>.cfg on first launch. ConfigurationManager lists
             // sections in the order they are first bound here.
             const string hotkeyNote = " When aiming at one of your skeletons, affects only that one.";
@@ -241,6 +246,15 @@ namespace ValheimSkeletonTracker
                 case SkeletonLoadout.Bow: return "bow";
                 default: return "random weapon";
             }
+        }
+
+        private void MigrateOldConfigFile()
+        {
+            string oldPath = Path.Combine(Paths.ConfigPath, OldConfigFileName);
+            if (File.Exists(Config.ConfigFilePath) || !File.Exists(oldPath))
+                return;
+            File.Move(oldPath, Config.ConfigFilePath);
+            Config.Reload();
         }
 
         // Carries a value over from a key's old name, then drops the old key from the config file.
