@@ -229,8 +229,9 @@ namespace ValheimSkeletonTracker
             text.Append($"Skeletons: {_skeletons.Count}  ({following} following, {_skeletons.Count - following} staying)");
             if (ShowDetails.Value)
             {
-                foreach (var skeleton in _skeletons)
-                    text.Append("\n<size=80%>").Append(SummonedSkeletons.Describe(skeleton, player)).Append("</size>");
+                // Same numbering as the chat list (/sk list).
+                for (int i = 0; i < _skeletons.Count; i++)
+                    text.Append($"\n<size=80%>#{i + 1}  ").Append(SummonedSkeletons.Describe(_skeletons[i], player)).Append("</size>");
             }
             _hud.Show(text.ToString(), CounterPositionY.Value);
         }

@@ -8,15 +8,19 @@ A Valheim mod (BepInEx 5) that makes it easier to track and command the skeleton
 - **Minimap pins** – each of your skeletons gets a map pin with the skeleton trophy icon, updated
   every 0.5 s. On the large map the pin label shows its state: following or staying.
 - **HUD counter** – below the minimap: how many skeletons you have and how many are following you
-  or staying. Optionally a detailed list: name, weapon (bow or sword & shield), HP, distance and state.
+  or staying. Optionally a detailed, numbered list: name, weapon (bow or sword & shield), HP (colored
+  by health), distance and state. Skeletons are sorted newest first, so the oldest one is at the bottom;
+  the numbers match the chat list.
+  The HUD is part of the game's interface, so the inventory and menus cover it like the minimap.
 - **Health bars** – always visible above your skeletons' heads (up to 40 m by default), colored by
   HP: green above 60%, yellow above 30%, red below.
 - **Glow** – a subtle light around your skeletons so they are easy to tell apart.
 - **Death notifications** – an on-screen message when one of your skeletons dies.
 - **Summon loadout** – choose whether newly summoned skeletons get a sword and shield or a bow
-  (random by default).
+  (random by default), in the config or with a hotkey. The weapon stays the same after reloading and
+  is the same for other players.
 - **Commands and hotkeys** – follow, stay and dismiss for all skeletons at once, or only for the one
-  you are aiming at.
+  you are aiming at (the hover text shows the hotkeys).
 
 ## Requirements
 
@@ -58,7 +62,7 @@ Type in chat (Enter), or in the F5 console without the slash:
 
 | Command | Action |
 |---|---|
-| `/sk` or `/sk list` | list skeletons: name, weapon, HP, distance, state |
+| `/sk` or `/sk list` | numbered list of skeletons (newest first): name, weapon, HP, distance, state |
 | `/sk follow` | all skeletons follow you |
 | `/sk stay` | all skeletons stay in place |
 | `/sk dismiss` | dismiss all skeletons |
