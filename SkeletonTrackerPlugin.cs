@@ -14,12 +14,12 @@ namespace ValheimSkeletonTracker
     {
         public const string PluginGuid = "michal.valheim.skeletontracker";
         public const string PluginName = "Skeleton Tracker";
-        public const string PluginVersion = "1.3.0";
+        public const string PluginVersion = "1.4.0";
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
-        private const string PinNameFollowing = "Szkielet";
-        private const string PinNameStaying = "Szkielet (czeka)";
+        private const string PinNameFollowing = "Skeleton";
+        private const string PinNameStaying = "Skeleton (staying)";
         private const string GlowObjectName = "SkeletonTracker_Glow";
 
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
@@ -67,43 +67,43 @@ namespace ValheimSkeletonTracker
         private void Awake()
         {
             // Written to BepInEx/config/<PluginGuid>.cfg on first launch.
-            const string hotkeyNote = " Gdy celujesz w swojego szkieleta, działa tylko na niego.";
+            const string hotkeyNote = " When aiming at one of your skeletons, affects only that one.";
             FollowKey = Config.Bind("Hotkeys", "Follow", new KeyboardShortcut(KeyCode.F, KeyCode.LeftAlt),
-                "Szkielety idą za tobą (jak /sk follow)." + hotkeyNote);
+                "Skeletons follow you (like /sk follow)." + hotkeyNote);
             StayKey = Config.Bind("Hotkeys", "Stay", new KeyboardShortcut(KeyCode.G, KeyCode.LeftAlt),
-                "Szkielety czekają w miejscu (jak /sk stay)." + hotkeyNote);
+                "Skeletons stay in place (like /sk stay)." + hotkeyNote);
             DismissKey = Config.Bind("Hotkeys", "Dismiss", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt),
-                "Odwołuje szkielety (jak /sk dismiss)." + hotkeyNote);
+                "Dismisses skeletons (like /sk dismiss)." + hotkeyNote);
             ListKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
-                "Wypisuje listę szkieletów na czacie (jak /sk list).");
+                "Lists your skeletons in chat (like /sk list).");
 
             ShowCounter = Config.Bind("HUD", "ShowCounter", true,
-                "Pokazuje licznik szkieletów pod minimapą.");
+                "Shows the skeleton counter below the minimap.");
             ShowDetails = Config.Bind("HUD", "ShowDetails", true,
-                "Pod licznikiem pokazuje każdego szkieleta: imię, broń, zdrowie, odległość i czy podąża.");
+                "Lists each skeleton below the counter: name, weapon, health, distance and whether it follows you.");
             CounterPositionY = Config.Bind("HUD", "CounterPositionY", 0.3f,
-                new ConfigDescription("Pionowa pozycja licznika jako ułamek wysokości ekranu (0 = góra, 1 = dół).",
+                new ConfigDescription("Vertical counter position as a fraction of screen height (0 = top, 1 = bottom).",
                     new AcceptableValueRange<float>(0f, 1f)));
 
             HealthBars = Config.Bind("HealthBars", "AlwaysShow", true,
-                "Paski zdrowia nad głowami twoich szkieletów są zawsze widoczne.");
+                "Health bars above your skeletons' heads are always visible.");
             HealthBarDistance = Config.Bind("HealthBars", "MaxDistance", 40f,
-                new ConfigDescription("Maksymalna odległość (m), z której widać paski zdrowia szkieletów.",
+                new ConfigDescription("Maximum distance (m) at which skeleton health bars are shown.",
                     new AcceptableValueRange<float>(10f, 100f)));
             HealthBarColors = Config.Bind("HealthBars", "ColorByHealth", true,
-                "Koloruje paski zdrowia nad szkieletami według HP: zielony > 60%, żółty > 30%, czerwony poniżej.");
+                "Colors skeleton health bars by HP: green > 60%, yellow > 30%, red below.");
 
             GlowEnabled = Config.Bind("Glow", "Enabled", true,
-                "Delikatna poświata wokół twoich szkieletów.");
+                "Subtle glow around your skeletons.");
             GlowColor = Config.Bind("Glow", "Color", new Color(0.4f, 0.85f, 1f, 1f),
-                "Kolor poświaty (RGBA w zapisie szesnastkowym).");
+                "Glow color (RGBA, hex).");
             GlowIntensity = Config.Bind("Glow", "Intensity", 1.2f,
-                new ConfigDescription("Jasność poświaty.", new AcceptableValueRange<float>(0f, 5f)));
+                new ConfigDescription("Glow brightness.", new AcceptableValueRange<float>(0f, 5f)));
             GlowRange = Config.Bind("Glow", "Range", 3f,
-                new ConfigDescription("Zasięg poświaty (m).", new AcceptableValueRange<float>(0.5f, 10f)));
+                new ConfigDescription("Glow range (m).", new AcceptableValueRange<float>(0.5f, 10f)));
 
             DeathNotifications = Config.Bind("Notifications", "Death", true,
-                "Komunikat na ekranie, gdy któryś z twoich szkieletów zginie.");
+                "On-screen message when one of your skeletons dies.");
 
             SkeletonCommands.Register();
             _harmony = Harmony.CreateAndPatchAll(typeof(SkeletonPatches), PluginGuid);
@@ -189,9 +189,9 @@ namespace ValheimSkeletonTracker
 
         internal static string GetHoverHints()
         {
-            return HoverHint(FollowKey.Value, "Podążaj")
-                + HoverHint(StayKey.Value, "Czekaj")
-                + HoverHint(DismissKey.Value, "Odwołaj");
+            return HoverHint(FollowKey.Value, "Follow")
+                + HoverHint(StayKey.Value, "Stay")
+                + HoverHint(DismissKey.Value, "Dismiss");
         }
 
         private static string HoverHint(KeyboardShortcut key, string action)
@@ -211,7 +211,7 @@ namespace ValheimSkeletonTracker
             }
 
             var text = new StringBuilder();
-            text.Append($"Szkielety: {_skeletons.Count}  (podąża {following}, czeka {_skeletons.Count - following})");
+            text.Append($"Skeletons: {_skeletons.Count}  ({following} following, {_skeletons.Count - following} staying)");
             if (ShowDetails.Value)
             {
                 foreach (var skeleton in _skeletons)
@@ -226,7 +226,7 @@ namespace ValheimSkeletonTracker
             if (!DeathNotifications.Value || player == null)
                 return;
             string name = SummonedSkeletons.GetName(skeleton);
-            player.Message(MessageHud.MessageType.TopLeft, $"{name} ({SummonedSkeletons.GetWeaponName(skeleton)}) zginął",
+            player.Message(MessageHud.MessageType.TopLeft, $"{name} ({SummonedSkeletons.GetWeaponName(skeleton)}) has died",
                 0, GetPinIcon());
         }
 

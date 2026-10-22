@@ -72,14 +72,14 @@ namespace ValheimSkeletonTracker
         {
             var weapon = (skeleton as Humanoid)?.GetCurrentWeapon();
             if (weapon == null)
-                return "brak broni";
+                return "no weapon";
             switch (weapon.m_shared.m_skillType)
             {
-                case Skills.SkillType.Bows: return "łuk";
-                case Skills.SkillType.Swords: return "miecz";
-                case Skills.SkillType.Clubs: return "maczuga";
-                case Skills.SkillType.Axes: return "topór";
-                case Skills.SkillType.Unarmed: return "bez broni";
+                case Skills.SkillType.Bows: return "bow";
+                case Skills.SkillType.Swords: return "sword";
+                case Skills.SkillType.Clubs: return "club";
+                case Skills.SkillType.Axes: return "axe";
+                case Skills.SkillType.Unarmed: return "unarmed";
                 default: return Localization.instance.Localize(weapon.m_shared.m_name);
             }
         }
@@ -99,7 +99,7 @@ namespace ValheimSkeletonTracker
         public static string Describe(Character skeleton, Player player)
         {
             float distance = Vector3.Distance(player.transform.position, skeleton.transform.position);
-            string state = IsFollowing(skeleton, player) ? "podąża" : "czeka";
+            string state = IsFollowing(skeleton, player) ? "following" : "staying";
             string hpColor = ColorUtility.ToHtmlStringRGB(GetHealthColor(skeleton));
             // Numbers are padded and monospaced so the right-aligned HUD line keeps its width as they change.
             return $"{GetName(skeleton)} · {GetWeaponName(skeleton)} · <color=#{hpColor}>HP <mspace={DigitWidth}>{skeleton.GetHealth(),3:0}/{skeleton.GetMaxHealth(),-3:0}</mspace></color>"

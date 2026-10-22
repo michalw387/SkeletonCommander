@@ -11,7 +11,7 @@ namespace ValheimSkeletonTracker
         public static void Register()
         {
             new Terminal.ConsoleCommand("sk",
-                "[list|follow|stay|dismiss] - zarządzanie przyzwanymi szkieletami (Dead Raiser)",
+                "[list|follow|stay|dismiss] - manage your Dead Raiser skeletons",
                 Run, optionsFetcher: () => Subcommands);
         }
 
@@ -20,7 +20,7 @@ namespace ValheimSkeletonTracker
             var player = Player.m_localPlayer;
             if (player == null)
             {
-                args.Context.AddString("Brak gracza w świecie.");
+                args.Context.AddString("No player in the world.");
                 return;
             }
 
@@ -40,7 +40,7 @@ namespace ValheimSkeletonTracker
                     args.Context.AddString(Dismiss(player));
                     break;
                 default:
-                    args.Context.AddString("Użycie: sk [list|follow|stay|dismiss]");
+                    args.Context.AddString("Usage: sk [list|follow|stay|dismiss]");
                     break;
             }
         }
@@ -51,8 +51,8 @@ namespace ValheimSkeletonTracker
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.SetFollowing(skeleton, player, follow: true);
             return only != null
-                ? $"{SummonedSkeletons.GetName(only)} idzie za tobą"
-                : $"Szkielety idą za tobą: {skeletons.Count}";
+                ? $"{SummonedSkeletons.GetName(only)} is following you"
+                : $"Skeletons following you: {skeletons.Count}";
         }
 
         public static string Stay(Player player, Character only = null)
@@ -61,8 +61,8 @@ namespace ValheimSkeletonTracker
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.SetFollowing(skeleton, player, follow: false);
             return only != null
-                ? $"{SummonedSkeletons.GetName(only)} czeka w miejscu"
-                : $"Szkielety czekają w miejscu: {skeletons.Count}";
+                ? $"{SummonedSkeletons.GetName(only)} is staying"
+                : $"Skeletons staying: {skeletons.Count}";
         }
 
         public static string Dismiss(Player player, Character only = null)
@@ -71,14 +71,14 @@ namespace ValheimSkeletonTracker
             foreach (var skeleton in skeletons)
                 SummonedSkeletons.Dismiss(skeleton);
             return only != null
-                ? $"Odwołano: {SummonedSkeletons.GetName(only)}"
-                : $"Odwołano szkielety: {skeletons.Count}";
+                ? $"Dismissed: {SummonedSkeletons.GetName(only)}"
+                : $"Skeletons dismissed: {skeletons.Count}";
         }
 
         public static void List(Terminal terminal, Player player)
         {
             var skeletons = Targets(player, null);
-            terminal.AddString($"Twoje szkielety: {skeletons.Count}");
+            terminal.AddString($"Your skeletons: {skeletons.Count}");
             for (int i = 0; i < skeletons.Count; i++)
                 terminal.AddString($"  #{i + 1}  {SummonedSkeletons.Describe(skeletons[i], player)}");
         }
