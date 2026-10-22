@@ -243,6 +243,11 @@ namespace ValheimSkeletonTracker
             player.Message(MessageHud.MessageType.Center, text);
         }
 
+        internal static IEnumerable<ConfigEntry<KeyboardShortcut>> Hotkeys => new[]
+        {
+            FollowKey, StayKey, DismissKey, ListKey, CycleNextSummonLoadoutKey
+        };
+
         internal static string GetHoverHints()
         {
             return HoverHint(FollowKey.Value, "Follow")

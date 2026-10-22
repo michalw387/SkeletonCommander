@@ -51,6 +51,10 @@
       <HintPath>lib/UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>lib/Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>lib/BepInEx.dll</HintPath>
       <Private>false</Private>

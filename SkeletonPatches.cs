@@ -86,6 +86,27 @@ namespace ValheimSkeletonTracker
             return false;
         }
 
+        // The game reads its key bindings through these; see HotkeyInputBlocker.
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButtonDown))]
+        [HarmonyPrefix]
+        private static bool BlockButtonDown(string name, ref bool __result) => AllowButton(name, ref __result);
+
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButton))]
+        [HarmonyPrefix]
+        private static bool BlockButton(string name, ref bool __result) => AllowButton(name, ref __result);
+
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButtonUp))]
+        [HarmonyPrefix]
+        private static bool BlockButtonUp(string name, ref bool __result) => AllowButton(name, ref __result);
+
+        private static bool AllowButton(string name, ref bool __result)
+        {
+            if (!HotkeyInputBlocker.IsBlocked(name))
+                return true;
+            __result = false;
+            return false;
+        }
+
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GiveDefaultItems))]
         [HarmonyPrefix]
         private static void ChooseSummonLoadout(Humanoid __instance)
