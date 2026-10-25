@@ -14,3 +14,5 @@
 - Wykorzystuj BepInEx 5 oraz Harmony.
 - Plik `.csproj` zawiera MSBuild Target (`AfterTargets="Build"`), który po `dotnet build` kopiuje plik `.dll` do BepInEx/plugins
 - W przypadku braku pewności co do metod lub zmiennych z Valheim, najpierw wykonaj `ilspycmd` na odpowiedniej klasie z `./lib/assembly_valheim.dll`.
+- Przy każdej zmianie w modzie podnoś wersję `PluginVersion` w `SkeletonCommanderPlugin.cs` (semver: poprawki → patch, nowe funkcje → minor, zmiany łamiące kompatybilność → major), chyba że bieżąca wersja nie została jeszcze wydana — wtedy dopisuj do niej. Każdą zmianę opisz w `CHANGELOG.md` pod tą wersją (po angielsku).
+- Autor moda: xMordax.
