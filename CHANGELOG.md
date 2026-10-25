@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.0
+
+### Added
+- **Dismissing the weakest skeleton** – when a new summon goes over the summon limit, the skeleton with the
+  least HP is dismissed instead of the oldest (the oldest on a tie), and the new summon gets the weapon of
+  its team slot. The same applies when you come back to more skeletons than your limit. The newest skeleton
+  is never dismissed. `Summon.DismissWeakest = false` dismisses the oldest as in the base game.
+- **Skeletons stay with other players** – far skeletons are no longer dismissed while another player is near
+  them, so they keep fighting alongside your friends, e.g. after you die or use a portal. They don't count
+  toward your summon limit while you are away; when you come back to more skeletons than your limit, the
+  extra ones are dismissed. `Summon.KeepNearOtherPlayers = false` dismisses them anyway, as in 1.8.0.
+
 ## 1.8.0
 
 ### Added

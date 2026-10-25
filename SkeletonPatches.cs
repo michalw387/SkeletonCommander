@@ -58,7 +58,8 @@ namespace SkeletonCommander
 
         // When a summon starts following its player the game unsummons the oldest ones above the limit, but
         // it only counts skeletons following that player, so ones told to stay let you exceed the limit.
-        // For Dead Raiser skeletons count all of the player's skeletons, staying ones included.
+        // For Dead Raiser skeletons count all of the player's skeletons, staying ones included, and dismiss
+        // the weakest (Summon.DismissWeakest); the new summon then gets the weapon of the dismissed one's slot.
         [HarmonyPatch(typeof(Tameable), "UnsummonMaxInstances")]
         [HarmonyPrefix]
         private static bool EnforceSummonLimit(Tameable __instance, int maxInstances,
@@ -74,10 +75,9 @@ namespace SkeletonCommander
             if (player == null)
                 return false;
 
-            // Sorted newest first, so the oldest skeletons are at the end.
             var skeletons = new List<Character>();
             SummonedSkeletons.FindOwned(player, skeletons);
-            if (SummonedSkeletons.DismissOldest(skeletons, maxInstances) > 0 && Player.m_localPlayer != null)
+            if (SummonedSkeletons.DismissExcess(skeletons, maxInstances) > 0 && Player.m_localPlayer != null)
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, __instance.m_maxSummonReached);
             return false;
         }

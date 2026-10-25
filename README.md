@@ -29,10 +29,15 @@ on dedicated servers or by other players, who also see the weapon chosen for you
   A `SwordAndShield` skeleton always gets a shield, never just a sword. The weapon stays the same after
   reloading and is the same for other players.
 - **Summon limit fix** – skeletons told to stay count toward the Dead Raiser's summon limit, so you
-  cannot exceed it by leaving skeletons behind (the oldest one is dismissed instead, as in vanilla).
+  cannot exceed it by leaving skeletons behind. Over the limit, the skeleton with the least HP is
+  dismissed (the oldest on a tie), so a new summon replaces your weakest skeleton with the weapon its
+  team slot needs; turn off `Summon.DismissWeakest` to dismiss the oldest as in vanilla.
   Skeletons more than 100 m away (configurable) or outside the area the game simulates around you are
   dismissed, also when you use a portal or die far from them, because the game stops tracking skeletons
-  in areas it unloads. If you still come back to more skeletons than your limit, the oldest are dismissed.
+  in areas it unloads. Skeletons near another player stay and keep fighting alongside them, e.g. when you
+  die while playing with friends (`Summon.KeepNearOtherPlayers`); while you are away they don't count
+  toward your limit. If you still come back to more skeletons than your limit, the extra ones are dismissed
+  the same way.
 - **Commands and hotkeys** – follow, stay and dismiss for all skeletons at once, or only for the one
   you are aiming at (the hover text shows the hotkeys).
 
@@ -109,7 +114,9 @@ restarting the game; with [ConfigurationManager](https://thunderstore.io/c/valhe
 | `Hotkeys` | `List` | `J + LeftAlt` | list-in-chat hotkey |
 | `Summon` | `TeamEnabled` | `true` | use the team slots; off = random weapons as in the base game |
 | `Summon` | `TeamSlot1`–`TeamSlot4` | `SwordAndShield`, `Bow`, `SwordAndShield`, `Bow` | your team; a summon limit of N uses slots 1 to N (`Random` = any weapon) |
+| `Summon` | `DismissWeakest` | `true` | over the summon limit, dismiss the skeleton with the least HP; off = the oldest, as in the base game |
 | `Summon` | `DismissBeyondDistance` | `100` | skeletons farther away (or outside the simulated area) are dismissed, also after a teleport or death (20–120 m) |
+| `Summon` | `KeepNearOtherPlayers` | `true` | far skeletons near another player are kept; off = dismissed anyway |
 | `Notifications` | `Death` | `true` | message when a skeleton dies |
 | `HUD` | `ShowCounter` | `true` | skeleton counter below the minimap |
 | `HUD` | `ShowDetails` | `true` | detailed skeleton list below the counter |

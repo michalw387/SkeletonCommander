@@ -21,7 +21,7 @@ namespace SkeletonCommander
     {
         public const string PluginGuid = "xmordax.valheim.skeletoncommander";
         public const string PluginName = "Skeleton Commander";
-        public const string PluginVersion = "1.8.0";
+        public const string PluginVersion = "1.9.0";
         // Config files of earlier GUIDs (the mod was called Skeleton Tracker before), newest first;
         // the first one found is taken over on first launch.
         private static readonly string[] OldConfigFileNames =
@@ -71,7 +71,9 @@ namespace SkeletonCommander
         internal static ConfigEntry<bool> DeathNotifications;
         internal static ConfigEntry<bool> TeamEnabled;
         internal static ConfigEntry<TeamSlot>[] TeamSlots;
+        internal static ConfigEntry<bool> DismissWeakest;
         internal static ConfigEntry<float> DismissBeyondDistance;
+        internal static ConfigEntry<bool> KeepNearOtherPlayers;
 
         // The local player's skeletons as of the last scan; read by the Harmony patches.
         private static readonly HashSet<Character> Owned = new HashSet<Character>();
@@ -119,12 +121,21 @@ namespace SkeletonCommander
                 $"Weapons of team member {i + 1}, used from a summon limit of {i + 1} (Dead Raiser upgrade level). " +
                 "New summons get the weapon the team is missing; Random accepts any weapon. " +
                 "Already summoned skeletons keep their weapons.")).ToArray();
+            DismissWeakest = Config.Bind("Summon", "DismissWeakest", true,
+                "Over the summon limit, the skeleton with the least HP is dismissed (the oldest on a tie), so a new summon " +
+                "replaces it with the weapon its team slot needs. Off: the oldest is dismissed as in the base game.");
             DismissBeyondDistance = Config.Bind("Summon", "DismissBeyondDistance", 100f,
-                new ConfigDescription("Skeletons farther away than this (in meters) are dismissed, also when you teleport " +
+                new ConfigDescription("Skeletons farther away than this (in meters) from you, and from other players with KeepNearOtherPlayers, are " +
+                    "dismissed, also when you teleport " +
                     "or die far from them. Skeletons left in an unloaded area would otherwise not count toward the summon limit. " +
                     "Skeletons leaving the area the game simulates around you (which depends on the Simulation distance " +
                     "graphics setting) are dismissed even when closer.",
                     new AcceptableValueRange<float>(20f, 120f)));
+            KeepNearOtherPlayers = Config.Bind("Summon", "KeepNearOtherPlayers", true,
+                "Far skeletons are kept while another player is near them, so they keep fighting alongside that player " +
+                "(e.g. after you die). They don't count toward your summon limit while you are away; when you come back " +
+                "to more skeletons than your limit, the extra ones are dismissed. Off: far skeletons are dismissed even " +
+                "when other players are near them.");
 
             DeathNotifications = Config.Bind("Notifications", "Death", true,
                 "On-screen message when one of your skeletons dies.");
@@ -360,11 +371,14 @@ namespace SkeletonCommander
             int dismissed = skeletons.RemoveAll(skeleton =>
             {
                 var position = skeleton.transform.position;
-                float distance = SummonedSkeletons.HorizontalDistance(position, center);
-                // Outside the active area the player gives up the skeleton, and the area may unload soon after.
-                if (distance <= maxDistance && ZNetScene.InActiveArea(position, center))
+                if (IsNear(position, center, maxDistance))
                     return false;
+                // The server hands a skeleton to a player it is near, whose game then keeps simulating it.
                 var nview = skeleton.GetComponent<ZNetView>();
+                if (KeepNearOtherPlayers.Value && ((nview.GetZDO().HasOwner() && !nview.IsOwner())
+                    || Player.GetAllPlayers().Any(other => other != player && IsNear(position, other.transform.position, maxDistance))))
+                    return false;
+                float distance = SummonedSkeletons.HorizontalDistance(position, center);
                 Log.LogInfo($"Dismissing {SummonedSkeletons.GetName(skeleton)} at {distance:0} m " +
                     $"(owner: {(nview.IsOwner() ? "you" : nview.GetZDO().HasOwner() ? "another player" : "none")})");
                 SummonedSkeletons.Dismiss(skeleton);
@@ -376,6 +390,13 @@ namespace SkeletonCommander
                     : $"{dismissed} skeletons too far away - dismissed");
         }
 
+        // Outside the active area of a player that player gives up the skeleton, and the area may unload soon after.
+        private static bool IsNear(Vector3 position, Vector3 center, float maxDistance)
+        {
+            return SummonedSkeletons.HorizontalDistance(position, center) <= maxDistance
+                && ZNetScene.InActiveArea(position, center);
+        }
+
         // Skeletons left in an unloaded area don't count when a new one is summoned, so coming back to
         // them can put the player above the limit. The newest skeleton carries the current limit.
         private static void DismissOverLimit(Player player, List<Character> skeletons)
@@ -385,7 +406,7 @@ namespace SkeletonCommander
             int maxInstances = SummonedSkeletons.GetMaxInstances(skeletons[0]);
             if (maxInstances <= 0)
                 return;
-            int dismissed = SummonedSkeletons.DismissOldest(skeletons, maxInstances);
+            int dismissed = SummonedSkeletons.DismissExcess(skeletons, maxInstances);
             if (dismissed > 0)
                 player.Message(MessageHud.MessageType.TopLeft, dismissed == 1
                     ? "Skeleton over the summon limit - dismissed"

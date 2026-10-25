@@ -92,15 +92,26 @@ namespace SkeletonCommander
             nview.InvokeRPC(ZNetView.Everybody, "RPC_UnSummon");
         }
 
-        // Dismisses the oldest skeletons above maxInstances from a list sorted newest first (as FindOwned
-        // returns it) and removes them from the list. Returns how many were dismissed.
-        public static int DismissOldest(List<Character> skeletons, int maxInstances)
+        // Dismisses the skeletons above maxInstances from a list sorted newest first (as FindOwned returns it)
+        // and removes them from the list: the ones with the least HP (Summon.DismissWeakest), the oldest on a
+        // tie, or just the oldest. The newest skeleton, the one just summoned, always stays. Returns how many
+        // were dismissed.
+        public static int DismissExcess(List<Character> skeletons, int maxInstances)
         {
             int excess = skeletons.Count - maxInstances;
             for (int i = 0; i < excess; i++)
             {
-                Dismiss(skeletons[skeletons.Count - 1]);
-                skeletons.RemoveAt(skeletons.Count - 1);
+                int victim = skeletons.Count - 1;
+                if (SkeletonCommanderPlugin.DismissWeakest.Value)
+                {
+                    for (int j = victim - 1; j > 0; j--)
+                    {
+                        if (skeletons[j].GetHealth() < skeletons[victim].GetHealth())
+                            victim = j;
+                    }
+                }
+                Dismiss(skeletons[victim]);
+                skeletons.RemoveAt(victim);
             }
             return System.Math.Max(excess, 0);
         }
