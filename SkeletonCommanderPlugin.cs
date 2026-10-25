@@ -21,7 +21,7 @@ namespace SkeletonCommander
     {
         public const string PluginGuid = "xmordax.valheim.skeletoncommander";
         public const string PluginName = "Skeleton Commander";
-        public const string PluginVersion = "1.9.0";
+        public const string PluginVersion = "1.9.1";
         // Config files of earlier GUIDs (the mod was called Skeleton Tracker before), newest first;
         // the first one found is taken over on first launch.
         private static readonly string[] OldConfigFileNames =

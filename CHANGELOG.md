@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1
+
+### Fixed
+- The license link at the end of the README led to a 404 page on Thunderstore.
+
 ## 1.9.0
 
 ### Added

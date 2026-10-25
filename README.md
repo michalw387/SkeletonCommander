@@ -144,4 +144,4 @@ Hotkeys are written as the main key followed by modifiers, e.g. `F + LeftAlt`. K
 
 ## License
 
-[MIT](LICENSE)
+MIT – see https://github.com/michalw387/SkeletonCommander/blob/main/LICENSE
