@@ -1,94 +1,79 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
 namespace SkeletonCommander
 {
-    // Skeleton counter/list and short notices drawn as part of the game's HUD canvas, so windows like
+    // Skeleton counter, list and frames drawn as part of the game's HUD canvas, so windows like
     // the inventory cover them the same way they cover the minimap, and they hide together with the HUD.
     internal class SkeletonHud
     {
         private const float RightMargin = 20f;
-        private const float NoticeDuration = 2f;
-        private const float NoticeFadeDuration = 0.5f;
 
+        private const float FramesGap = 6f;
+
+        private readonly SkeletonFrames _frames = new SkeletonFrames();
         private TextMeshProUGUI _list;
-        private TextMeshProUGUI _notice;
-        private float _noticeHideTime;
-        private bool _noticeFading;
 
-        public void Show(string text, float positionY, float fontSize)
+        // frames: per-skeleton panels below the text, or null to show only the text.
+        public void Show(string text, float positionY, float fontSize, List<SkeletonFrameData> frames)
         {
             if (_list == null)
-                _list = CreateText("SkeletonCommanderHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
+                _list = CreateHudText("SkeletonCommanderHud", TextAlignmentOptions.TopLeft, new Vector2(1f, 1f), new Vector2(-RightMargin, 0f));
             if (_list == null)
                 return;
 
             _list.text = text;
             _list.fontSize = fontSize;
             var rect = _list.rectTransform;
-            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f - positionY);
+            var anchor = new Vector2(1f, 1f - positionY);
+            rect.anchorMin = rect.anchorMax = anchor;
             // Lines are left-aligned inside a box as wide as the longest line, and the box keeps a fixed
             // distance from the right screen edge, so the longest line ends at that margin.
-            rect.sizeDelta = new Vector2(Mathf.Ceil(_list.GetPreferredValues(text).x), rect.sizeDelta.y);
+            var size = _list.GetPreferredValues(text);
+            rect.sizeDelta = new Vector2(Mathf.Ceil(size.x), Mathf.Ceil(size.y));
             _list.gameObject.SetActive(true);
+
+            if (frames != null && frames.Count > 0)
+                _frames.Show(frames, anchor, RightMargin, rect.sizeDelta.y + FramesGap, fontSize);
+            else
+                _frames.Hide();
         }
 
         public void Hide()
         {
             if (_list != null)
                 _list.gameObject.SetActive(false);
-        }
-
-        // A single notice that replaces the previous one. Messages sent through MessageHud can be
-        // stacked by other mods (e.g. notification overhauls), which hides which one is the latest.
-        public void ShowNotice(string text)
-        {
-            if (_notice == null)
-            {
-                _notice = CreateText("SkeletonCommanderNotice", TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero);
-                if (_notice == null)
-                    return;
-                var rect = _notice.rectTransform;
-                rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.65f);
-                _notice.fontSize = 24;
-                _notice.color = new Color(1f, 0.85f, 0.4f);
-            }
-
-            _notice.text = text;
-            _notice.CrossFadeAlpha(1f, 0f, ignoreTimeScale: true);
-            _noticeHideTime = Time.unscaledTime + NoticeDuration;
-            _noticeFading = false;
-        }
-
-        public void Update()
-        {
-            if (_notice != null && !_noticeFading && Time.unscaledTime >= _noticeHideTime)
-            {
-                _notice.CrossFadeAlpha(0f, NoticeFadeDuration, ignoreTimeScale: true);
-                _noticeFading = true;
-            }
+            _frames.Hide();
         }
 
         public void Destroy()
         {
             if (_list != null)
                 Object.Destroy(_list.gameObject);
-            if (_notice != null)
-                Object.Destroy(_notice.gameObject);
             _list = null;
-            _notice = null;
+            _frames.Destroy();
         }
 
-        private static TextMeshProUGUI CreateText(string name, TextAlignmentOptions alignment, Vector2 pivot, Vector2 offset)
+        private static TextMeshProUGUI CreateHudText(string name, TextAlignmentOptions alignment, Vector2 pivot, Vector2 offset)
         {
             var hud = Hud.instance;
             if (hud == null || hud.m_rootObject == null)
                 return null;
-
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(hud.m_rootObject.transform, worldPositionStays: false);
+            var text = CreateText(name, hud.m_rootObject.transform, alignment, pivot, offset);
             // Draw beneath the other HUD elements.
-            go.transform.SetAsFirstSibling();
+            text.transform.SetAsFirstSibling();
+            return text;
+        }
+
+        // Requires Hud.instance, whose font the text reuses.
+        public static TextMeshProUGUI CreateText(string name, Transform parent, TextAlignmentOptions alignment, Vector2 pivot, Vector2 offset)
+        {
+            var hud = Hud.instance;
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, worldPositionStays: false);
+            // Inactive until the font is set, or TextMeshPro looks for its default font when it awakes.
+            go.SetActive(false);
 
             var text = go.AddComponent<TextMeshProUGUI>();
             // Reuse the HUD's font and material (with its outline) so the text matches the game's style.
@@ -104,6 +89,7 @@ namespace SkeletonCommander
             rect.pivot = pivot;
             rect.sizeDelta = new Vector2(700f, 400f);
             rect.anchoredPosition = offset;
+            go.SetActive(true);
             return text;
         }
     }

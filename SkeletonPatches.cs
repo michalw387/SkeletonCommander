@@ -77,13 +77,31 @@ namespace SkeletonCommander
             // Sorted newest first, so the oldest skeletons are at the end.
             var skeletons = new List<Character>();
             SummonedSkeletons.FindOwned(player, skeletons);
-            int excess = skeletons.Count - maxInstances;
-            for (int i = 0; i < excess; i++)
-                SummonedSkeletons.Dismiss(skeletons[skeletons.Count - 1 - i]);
-
-            if (excess > 0 && Player.m_localPlayer != null)
+            if (SummonedSkeletons.DismissOldest(skeletons, maxInstances) > 0 && Player.m_localPlayer != null)
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, __instance.m_maxSummonReached);
             return false;
+        }
+
+        // Skeletons do not come along through portals, and their area unloads once the player is gone.
+        [HarmonyPatch(typeof(Player), nameof(Player.TeleportTo))]
+        [HarmonyPostfix]
+        private static void DismissSkeletonsLeftByTeleport(Player __instance, Vector3 pos, bool __result)
+        {
+            if (__result && __instance == Player.m_localPlayer)
+                SkeletonCommanderPlugin.DismissFarSkeletons(__instance, pos);
+        }
+
+        // The player respawns at their bed, or at the home point without one (as the game assumes in
+        // PlayerProfile when saving), and the area where they died unloads.
+        [HarmonyPatch(typeof(Player), nameof(Player.OnDeath))]
+        [HarmonyPostfix]
+        private static void DismissSkeletonsLeftByDeath(Player __instance)
+        {
+            var profile = Game.instance != null ? Game.instance.GetPlayerProfile() : null;
+            if (__instance != Player.m_localPlayer || profile == null)
+                return;
+            var spawnPoint = profile.HaveCustomSpawnPoint() ? profile.GetCustomSpawnPoint() : profile.GetHomePoint();
+            SkeletonCommanderPlugin.DismissFarSkeletons(__instance, spawnPoint);
         }
 
         // The game reads its key bindings through these; see HotkeyInputBlocker.

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 
 namespace SkeletonCommander
@@ -52,6 +53,15 @@ namespace SkeletonCommander
             return skeleton.GetComponent<ZNetView>().GetZDO().GetLong(ZDOVars.s_spawnTime);
         }
 
+        // Zones load by horizontal position, so distances that decide whether a skeleton stays loaded ignore
+        // height (dungeon interiors sit high above their entrance, in the same zone).
+        public static float HorizontalDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0f;
+            b.y = 0f;
+            return Vector3.Distance(a, b);
+        }
+
         public static bool IsFollowing(Character skeleton, Player player)
         {
             var nview = skeleton.GetComponent<ZNetView>();
@@ -69,12 +79,36 @@ namespace SkeletonCommander
                 tameable.Command(player, message: false);
         }
 
-        // Same RPC the game uses when a summon is unsummoned (Tameable.UnSummon is private).
+        // Same RPC the game uses when a summon is unsummoned (Tameable.UnSummon is private). Only the owner
+        // of the skeleton's ZDO removes it, and a skeleton outside the player's active area can still be
+        // loaded with no owner at all, so take it over first.
         public static void Dismiss(Character skeleton)
         {
             var nview = skeleton.GetComponent<ZNetView>();
-            if (nview != null && nview.IsValid())
-                nview.InvokeRPC(ZNetView.Everybody, "RPC_UnSummon");
+            if (nview == null || !nview.IsValid())
+                return;
+            if (!nview.IsOwner() && !nview.GetZDO().HasOwner())
+                nview.ClaimOwnership();
+            nview.InvokeRPC(ZNetView.Everybody, "RPC_UnSummon");
+        }
+
+        // Dismisses the oldest skeletons above maxInstances from a list sorted newest first (as FindOwned
+        // returns it) and removes them from the list. Returns how many were dismissed.
+        public static int DismissOldest(List<Character> skeletons, int maxInstances)
+        {
+            int excess = skeletons.Count - maxInstances;
+            for (int i = 0; i < excess; i++)
+            {
+                Dismiss(skeletons[skeletons.Count - 1]);
+                skeletons.RemoveAt(skeletons.Count - 1);
+            }
+            return System.Math.Max(excess, 0);
+        }
+
+        // The summon limit the skeleton was summoned with (the Dead Raiser's upgrade level); 0 means no limit.
+        public static int GetMaxInstances(Character skeleton)
+        {
+            return skeleton.GetComponent<ZNetView>().GetZDO().GetInt(ZDOVars.s_maxInstances);
         }
 
         public static string GetName(Character skeleton)
@@ -86,22 +120,39 @@ namespace SkeletonCommander
         // and not by m_skillType, which monster weapons leave at its default (Swords).
         public static string GetWeaponName(Character skeleton)
         {
-            var humanoid = skeleton as Humanoid;
-            if (humanoid == null)
+            if (!(skeleton is Humanoid humanoid))
                 return "unarmed";
+            Classify(humanoid.GetInventory().GetAllItems(), out bool bow, out bool melee, out bool shield);
+            if (bow)
+                return "bow";
+            if (!melee)
+                return "unarmed";
+            return shield ? "sword & shield" : "sword";
+        }
 
-            bool hasWeapon = false;
-            bool hasShield = false;
-            foreach (var item in humanoid.GetInventory().GetAllItems())
+        // Bow for archers, SwordAndShield for any melee skeleton (with or without a shield), Random when unarmed.
+        public static SkeletonLoadout GetLoadout(Character skeleton)
+        {
+            if (!(skeleton is Humanoid humanoid))
+                return SkeletonLoadout.Random;
+            Classify(humanoid.GetInventory().GetAllItems(), out bool bow, out bool melee, out _);
+            if (bow)
+                return SkeletonLoadout.Bow;
+            return melee ? SkeletonLoadout.SwordAndShield : SkeletonLoadout.Random;
+        }
+
+        public static void Classify(List<ItemDrop.ItemData> items, out bool bow, out bool melee, out bool shield)
+        {
+            bow = melee = shield = false;
+            foreach (var item in items)
             {
                 if (IsRangedWeapon(item))
-                    return "bow";
-                hasWeapon |= item.IsWeapon();
-                hasShield |= item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield;
+                    bow = true;
+                else if (item.IsWeapon())
+                    melee = true;
+                else if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
+                    shield = true;
             }
-            if (!hasWeapon)
-                return "unarmed";
-            return hasShield ? "sword & shield" : "sword";
         }
 
         public static bool IsRangedWeapon(ItemDrop.ItemData item)
@@ -123,8 +174,9 @@ namespace SkeletonCommander
         }
 
         // One line used by both the chat list and the detailed HUD; the HUD can leave parts out.
+        // padded: pad numbers to a fixed width so a line keeps its width as they change (for text lists).
         public static string Describe(Character skeleton, Player player, bool name = true, bool weapon = true,
-            bool health = true, bool distance = true, bool state = true)
+            bool health = true, bool distance = true, bool state = true, bool padded = true, bool shield = true)
         {
             var parts = new List<string>();
             if (name)
@@ -140,11 +192,35 @@ namespace SkeletonCommander
             if (distance)
             {
                 float meters = Vector3.Distance(player.transform.position, skeleton.transform.position);
-                parts.Add($"<mspace={DigitWidth}>{meters,3:0}</mspace> m");
+                parts.Add(padded ? $"<mspace={DigitWidth}>{meters,3:0}</mspace> m" : $"{meters:0} m");
             }
+            if (shield && TryGetShield(skeleton, out float remaining, out float total, out float seconds))
+                parts.Add($"<color=#73BFFF>shield {remaining:0}/{total:0} ({seconds:0} s)</color>");
             if (state)
                 parts.Add(IsFollowing(skeleton, player) ? "following" : "staying");
             return string.Join(" · ", parts);
+        }
+
+        private static readonly AccessTools.FieldRef<SE_Shield, float> ShieldTotal =
+            AccessTools.FieldRefAccess<SE_Shield, float>("m_totalAbsorbDamage");
+        private static readonly AccessTools.FieldRef<SE_Shield, float> ShieldDamage =
+            AccessTools.FieldRefAccess<SE_Shield, float>("m_damage");
+
+        // The barrier from the Staff of Protection (SE_Shield is the game's only shield effect). Status
+        // effects exist only on the skeleton's owner, normally its summoner; others see no shield.
+        public static bool TryGetShield(Character skeleton, out float remaining, out float total, out float seconds)
+        {
+            foreach (var effect in skeleton.GetSEMan().GetStatusEffects())
+            {
+                if (!(effect is SE_Shield shield))
+                    continue;
+                total = ShieldTotal(shield);
+                remaining = Mathf.Max(0f, total - ShieldDamage(shield));
+                seconds = Mathf.Max(0f, shield.GetRemaningTime());
+                return true;
+            }
+            remaining = total = seconds = 0f;
+            return false;
         }
     }
 }

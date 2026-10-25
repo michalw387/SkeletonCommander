@@ -10,14 +10,25 @@ using UnityEngine;
 
 namespace SkeletonCommander
 {
+    internal enum HudStyle
+    {
+        Bars,
+        Text
+    }
+
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class SkeletonCommanderPlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "michal.valheim.skeletoncommander";
+        public const string PluginGuid = "xmordax.valheim.skeletoncommander";
         public const string PluginName = "Skeleton Commander";
-        public const string PluginVersion = "1.7.1";
-        // The mod was called Skeleton Tracker before; its config file is taken over on first launch.
-        private const string OldConfigFileName = "michal.valheim.skeletontracker.cfg";
+        public const string PluginVersion = "1.8.0";
+        // Config files of earlier GUIDs (the mod was called Skeleton Tracker before), newest first;
+        // the first one found is taken over on first launch.
+        private static readonly string[] OldConfigFileNames =
+        {
+            "michal.valheim.skeletoncommander.cfg",
+            "michal.valheim.skeletontracker.cfg"
+        };
 
         private const float ScanInterval = 0.5f;
         private const string PinIconItem = "TrophySkeleton";
@@ -27,9 +38,6 @@ namespace SkeletonCommander
 
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdateRequired =
             AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
-        private static readonly Func<ConfigFile, Dictionary<ConfigDefinition, string>> ConfigOrphanedEntries =
-            AccessTools.MethodDelegate<Func<ConfigFile, Dictionary<ConfigDefinition, string>>>(
-                AccessTools.PropertyGetter(typeof(ConfigFile), "OrphanedEntries"));
         private static readonly AccessTools.FieldRef<Chat, float> ChatHideTimer =
             AccessTools.FieldRefAccess<Chat, float>("m_hideTimer");
         // False while typing in chat/console, in menus, the inventory or the large map.
@@ -40,17 +48,19 @@ namespace SkeletonCommander
         internal static ConfigEntry<KeyboardShortcut> StayKey;
         internal static ConfigEntry<KeyboardShortcut> DismissKey;
         internal static ConfigEntry<KeyboardShortcut> ListKey;
-        internal static ConfigEntry<KeyboardShortcut> CycleNextSummonLoadoutKey;
         internal static ConfigEntry<bool> ShowCounter;
         internal static ConfigEntry<bool> ShowDetails;
         internal static ConfigEntry<bool> ShowStateSummary;
+        internal static ConfigEntry<bool> ShowTeam;
         internal static ConfigEntry<bool> ShowName;
         internal static ConfigEntry<bool> ShowWeapon;
         internal static ConfigEntry<bool> ShowHealth;
         internal static ConfigEntry<bool> ShowDistance;
         internal static ConfigEntry<bool> ShowState;
+        internal static ConfigEntry<bool> ShowShield;
         internal static ConfigEntry<float> CounterPositionY;
         internal static ConfigEntry<float> HudFontSize;
+        internal static ConfigEntry<HudStyle> Style;
         internal static ConfigEntry<bool> HealthBars;
         internal static ConfigEntry<float> HealthBarDistance;
         internal static ConfigEntry<bool> HealthBarColors;
@@ -59,7 +69,9 @@ namespace SkeletonCommander
         internal static ConfigEntry<float> GlowIntensity;
         internal static ConfigEntry<float> GlowRange;
         internal static ConfigEntry<bool> DeathNotifications;
-        internal static ConfigEntry<SkeletonLoadout> NextSummonLoadout;
+        internal static ConfigEntry<bool> TeamEnabled;
+        internal static ConfigEntry<TeamSlot>[] TeamSlots;
+        internal static ConfigEntry<float> DismissBeyondDistance;
 
         // The local player's skeletons as of the last scan; read by the Harmony patches.
         private static readonly HashSet<Character> Owned = new HashSet<Character>();
@@ -79,8 +91,11 @@ namespace SkeletonCommander
             return character != null && Owned.Contains(character);
         }
 
+        internal static BepInEx.Logging.ManualLogSource Log;
+
         private void Awake()
         {
+            Log = Logger;
             MigrateOldConfigFile();
 
             // Written to BepInEx/config/<PluginGuid>.cfg on first launch. ConfigurationManager lists
@@ -94,13 +109,22 @@ namespace SkeletonCommander
                 "Dismisses skeletons (like /sk dismiss)." + hotkeyNote);
             ListKey = Config.Bind("Hotkeys", "List", new KeyboardShortcut(KeyCode.J, KeyCode.LeftAlt),
                 "Lists your skeletons in chat (like /sk list).");
-            CycleNextSummonLoadoutKey = Config.Bind("Hotkeys", "CycleNextSummonLoadout", new KeyboardShortcut(KeyCode.K, KeyCode.LeftAlt),
-                "Switches the weapons of your next summoned skeletons (Summon.NextSummonLoadout): " +
-                "Random -> SwordAndShield -> Bow.");
 
-            NextSummonLoadout = Config.Bind("Summon", "NextSummonLoadout", SkeletonLoadout.Random,
-                "Weapons of the skeletons you summon next: Random (game default), SwordAndShield or Bow. " +
-                "Already summoned skeletons keep their weapons.");
+            TeamEnabled = Config.Bind("Summon", "TeamEnabled", true,
+                "Gives new summons the weapons set by TeamSlot1-4. Off: skeletons get random weapons as in the base game.");
+            // Each new summon gets the weapon its team is missing. The summon limit is 1-4 depending on the
+            // Dead Raiser's upgrade level; a limit of N uses slots 1..N.
+            var slotDefaults = new[] { TeamSlot.SwordAndShield, TeamSlot.Bow, TeamSlot.SwordAndShield, TeamSlot.Bow };
+            TeamSlots = slotDefaults.Select((value, i) => Config.Bind("Summon", $"TeamSlot{i + 1}", value,
+                $"Weapons of team member {i + 1}, used from a summon limit of {i + 1} (Dead Raiser upgrade level). " +
+                "New summons get the weapon the team is missing; Random accepts any weapon. " +
+                "Already summoned skeletons keep their weapons.")).ToArray();
+            DismissBeyondDistance = Config.Bind("Summon", "DismissBeyondDistance", 100f,
+                new ConfigDescription("Skeletons farther away than this (in meters) are dismissed, also when you teleport " +
+                    "or die far from them. Skeletons left in an unloaded area would otherwise not count toward the summon limit. " +
+                    "Skeletons leaving the area the game simulates around you (which depends on the Simulation distance " +
+                    "graphics setting) are dismissed even when closer.",
+                    new AcceptableValueRange<float>(20f, 120f)));
 
             DeathNotifications = Config.Bind("Notifications", "Death", true,
                 "On-screen message when one of your skeletons dies.");
@@ -111,18 +135,24 @@ namespace SkeletonCommander
                 "Lists each skeleton below the counter: name, weapon, health, distance and whether it follows you.");
             ShowStateSummary = Config.Bind("HUD", "ShowStateSummary", true,
                 "Shows how many skeletons are following you and how many are staying next to the counter.");
+            ShowTeam = Config.Bind("HUD", "ShowTeam", true,
+                "Shows how many skeletons of each type your team (Summon.TeamSlot1-4) has and wants.");
             ShowName = Config.Bind("HUD", "ShowName", true, "Shows each skeleton's name in the detailed list.");
             ShowWeapon = Config.Bind("HUD", "ShowWeapon", true, "Shows each skeleton's weapon in the detailed list.");
             ShowHealth = Config.Bind("HUD", "ShowHealth", true, "Shows each skeleton's health in the detailed list.");
             ShowDistance = Config.Bind("HUD", "ShowDistance", true, "Shows each skeleton's distance from you in the detailed list.");
             ShowState = Config.Bind("HUD", "ShowState", true,
                 "Shows whether each skeleton is following you or staying in the detailed list.");
+            ShowShield = Config.Bind("HUD", "ShowShield", true,
+                "Shows the barrier from the Staff of Protection (how much is left and for how long) in the detailed list.");
             CounterPositionY = Config.Bind("HUD", "CounterPositionY", 0.3f,
                 new ConfigDescription("Vertical counter position as a fraction of screen height (0 = top, 1 = bottom).",
                     new AcceptableValueRange<float>(0f, 1f)));
             HudFontSize = Config.Bind("HUD", "FontSize", 18f,
                 new ConfigDescription("Font size of the skeleton counter and list; the whole box scales with it.",
                     new AcceptableValueRange<float>(10f, 40f)));
+            Style = Config.Bind("HUD", "Style", HudStyle.Bars,
+                "How the detailed list shows each skeleton: Bars (a panel with an HP bar per skeleton) or Text (one line each).");
 
             HealthBars = Config.Bind("HealthBars", "AlwaysShow", true,
                 "Health bars above your skeletons' heads are always visible.");
@@ -141,10 +171,6 @@ namespace SkeletonCommander
             GlowRange = Config.Bind("Glow", "Range", 3f,
                 new ConfigDescription("Glow range (m).", new AcceptableValueRange<float>(0.5f, 10f)));
 
-            // Keys renamed in 1.6.0 to make clear they apply to the next summon.
-            MigrateRenamedEntry(CycleNextSummonLoadoutKey, "Hotkeys", "CycleLoadout");
-            MigrateRenamedEntry(NextSummonLoadout, "Summon", "Loadout");
-
             SkeletonCommands.Register();
             _harmony = Harmony.CreateAndPatchAll(typeof(SkeletonPatches), PluginGuid);
         }
@@ -152,7 +178,6 @@ namespace SkeletonCommander
         private void Update()
         {
             HandleHotkeys();
-            _hud.Update();
 
             _timer += Time.deltaTime;
             if (_timer < ScanInterval)
@@ -177,6 +202,10 @@ namespace SkeletonCommander
             }
 
             SummonedSkeletons.FindOwned(player, _skeletons);
+            // While teleporting the player is still at the old place; TeleportTo already checked the destination.
+            if (!player.IsTeleporting())
+                DismissFarSkeletons(player, player.transform.position, _skeletons);
+            DismissOverLimit(player, _skeletons);
             Owned.Clear();
             Owned.UnionWith(_skeletons);
             _deathHooked.RemoveWhere(c => c == null);
@@ -221,12 +250,6 @@ namespace SkeletonCommander
                 // The chat window hides itself until opened; reset its timer so the list is visible.
                 ChatHideTimer(Chat.instance) = 0f;
             }
-            else if (IsPressed(CycleNextSummonLoadoutKey.Value))
-            {
-                // Setting the value also saves it to the config file.
-                NextSummonLoadout.Value = (SkeletonLoadout)(((int)NextSummonLoadout.Value + 1) % 3);
-                _hud.ShowNotice($"Next summon: {DescribeLoadout(NextSummonLoadout.Value)}");
-            }
         }
 
         // KeyboardShortcut.IsDown() fails while any other key is held (e.g. W while running),
@@ -238,36 +261,19 @@ namespace SkeletonCommander
                 && shortcut.Modifiers.All(UnityInput.Current.GetKey);
         }
 
-        private static string DescribeLoadout(SkeletonLoadout loadout)
-        {
-            switch (loadout)
-            {
-                case SkeletonLoadout.SwordAndShield: return "sword & shield";
-                case SkeletonLoadout.Bow: return "bow";
-                default: return "random weapon";
-            }
-        }
-
         private void MigrateOldConfigFile()
         {
-            string oldPath = Path.Combine(Paths.ConfigPath, OldConfigFileName);
-            if (File.Exists(Config.ConfigFilePath) || !File.Exists(oldPath))
+            if (File.Exists(Config.ConfigFilePath))
                 return;
-            File.Move(oldPath, Config.ConfigFilePath);
-            Config.Reload();
-        }
-
-        // Carries a value over from a key's old name, then drops the old key from the config file.
-        // Values in the file that no Bind call claimed are kept by BepInEx as orphaned entries.
-        private void MigrateRenamedEntry(ConfigEntryBase entry, string oldSection, string oldKey)
-        {
-            var orphaned = ConfigOrphanedEntries(Config);
-            var oldDefinition = new ConfigDefinition(oldSection, oldKey);
-            if (!orphaned.TryGetValue(oldDefinition, out var value))
+            foreach (string fileName in OldConfigFileNames)
+            {
+                string oldPath = Path.Combine(Paths.ConfigPath, fileName);
+                if (!File.Exists(oldPath))
+                    continue;
+                File.Move(oldPath, Config.ConfigFilePath);
+                Config.Reload();
                 return;
-            entry.SetSerializedValue(value);
-            orphaned.Remove(oldDefinition);
-            Config.Save();
+            }
         }
 
         private static void ShowMessage(Player player, string text)
@@ -277,7 +283,7 @@ namespace SkeletonCommander
 
         internal static IEnumerable<ConfigEntry<KeyboardShortcut>> Hotkeys => new[]
         {
-            FollowKey, StayKey, DismissKey, ListKey, CycleNextSummonLoadoutKey
+            FollowKey, StayKey, DismissKey, ListKey
         };
 
         internal static string GetHoverHints()
@@ -308,14 +314,89 @@ namespace SkeletonCommander
             if (ShowStateSummary.Value)
                 text.Append($"  ({following} following, {_skeletons.Count - following} staying)");
             text.Append("</align>");
-            if (ShowDetails.Value)
+            if (ShowTeam.Value && TeamEnabled.Value)
+                text.Append($"\n<align=center><size=80%>{SkeletonLoadouts.DescribeTeam(_skeletons)}</size></align>");
+            List<SkeletonFrameData> frames = null;
+            if (ShowDetails.Value && Style.Value == HudStyle.Bars)
+                frames = _skeletons.Select((skeleton, i) => DescribeFrame(skeleton, i, player)).ToList();
+            else if (ShowDetails.Value)
             {
                 // Same numbering as the chat list (/sk list).
                 for (int i = 0; i < _skeletons.Count; i++)
                     text.Append($"\n<size=80%>#{i + 1}  ").Append(SummonedSkeletons.Describe(_skeletons[i], player,
-                        ShowName.Value, ShowWeapon.Value, ShowHealth.Value, ShowDistance.Value, ShowState.Value)).Append("</size>");
+                        ShowName.Value, ShowWeapon.Value, ShowHealth.Value, ShowDistance.Value, ShowState.Value,
+                        shield: ShowShield.Value)).Append("</size>");
             }
-            _hud.Show(text.ToString(), CounterPositionY.Value, HudFontSize.Value);
+            _hud.Show(text.ToString(), CounterPositionY.Value, HudFontSize.Value, frames);
+        }
+
+        // Header: number and name (gold), then the other enabled parts; the HP bar replaces the HP text.
+        private static SkeletonFrameData DescribeFrame(Character skeleton, int index, Player player)
+        {
+            string name = ShowName.Value ? $" {SummonedSkeletons.GetName(skeleton)}" : "";
+            string details = SummonedSkeletons.Describe(skeleton, player, name: false, weapon: ShowWeapon.Value,
+                health: false, distance: ShowDistance.Value, state: ShowState.Value, padded: false, shield: false);
+            bool hasShield = SummonedSkeletons.TryGetShield(skeleton, out float shield, out float maxShield, out float shieldSeconds);
+            return new SkeletonFrameData
+            {
+                Header = $"<color=#FFC74D>#{index + 1}{name}</color>  <size=90%>{details}</size>",
+                ShowBar = ShowHealth.Value,
+                Health = skeleton.GetHealth(),
+                MaxHealth = skeleton.GetMaxHealth(),
+                BarColor = SummonedSkeletons.GetHealthColor(skeleton),
+                ShowShield = ShowShield.Value && hasShield,
+                Shield = shield,
+                MaxShield = maxShield,
+                ShieldSeconds = shieldSeconds
+            };
+        }
+
+        // A skeleton in an area that unloads keeps existing but is no longer found, so it would not count
+        // toward the summon limit. Dismiss skeletons too far from where the player is or is about to be
+        // while they are still loaded. Dismissed ones are removed from the list.
+        internal static void DismissFarSkeletons(Player player, Vector3 center, List<Character> skeletons)
+        {
+            float maxDistance = DismissBeyondDistance.Value;
+            int dismissed = skeletons.RemoveAll(skeleton =>
+            {
+                var position = skeleton.transform.position;
+                float distance = SummonedSkeletons.HorizontalDistance(position, center);
+                // Outside the active area the player gives up the skeleton, and the area may unload soon after.
+                if (distance <= maxDistance && ZNetScene.InActiveArea(position, center))
+                    return false;
+                var nview = skeleton.GetComponent<ZNetView>();
+                Log.LogInfo($"Dismissing {SummonedSkeletons.GetName(skeleton)} at {distance:0} m " +
+                    $"(owner: {(nview.IsOwner() ? "you" : nview.GetZDO().HasOwner() ? "another player" : "none")})");
+                SummonedSkeletons.Dismiss(skeleton);
+                return true;
+            });
+            if (dismissed > 0)
+                player.Message(MessageHud.MessageType.TopLeft, dismissed == 1
+                    ? "Skeleton too far away - dismissed"
+                    : $"{dismissed} skeletons too far away - dismissed");
+        }
+
+        // Skeletons left in an unloaded area don't count when a new one is summoned, so coming back to
+        // them can put the player above the limit. The newest skeleton carries the current limit.
+        private static void DismissOverLimit(Player player, List<Character> skeletons)
+        {
+            if (skeletons.Count == 0)
+                return;
+            int maxInstances = SummonedSkeletons.GetMaxInstances(skeletons[0]);
+            if (maxInstances <= 0)
+                return;
+            int dismissed = SummonedSkeletons.DismissOldest(skeletons, maxInstances);
+            if (dismissed > 0)
+                player.Message(MessageHud.MessageType.TopLeft, dismissed == 1
+                    ? "Skeleton over the summon limit - dismissed"
+                    : $"{dismissed} skeletons over the summon limit - dismissed");
+        }
+
+        internal static void DismissFarSkeletons(Player player, Vector3 center)
+        {
+            var skeletons = new List<Character>();
+            SummonedSkeletons.FindOwned(player, skeletons);
+            DismissFarSkeletons(player, center, skeletons);
         }
 
         private void OnSkeletonDied(Character skeleton)
