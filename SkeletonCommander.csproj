@@ -83,7 +83,7 @@
     </PropertyGroup>
     <RemoveDir Directories="$(ThunderstoreStagingDir)" />
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(ThunderstorePackage)))" />
-    <Copy SourceFiles="thunderstore/icon.png;README.md;LICENSE" DestinationFolder="$(ThunderstoreStagingDir)" />
+    <Copy SourceFiles="thunderstore/icon.png;README.md;CHANGELOG.md;LICENSE" DestinationFolder="$(ThunderstoreStagingDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ThunderstoreStagingDir)plugins/" />
     <WriteLinesToFile File="$(ThunderstoreStagingDir)manifest.json" Lines="$(ThunderstoreManifest)" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(ThunderstoreStagingDir)" DestinationFile="$(ThunderstorePackage)" Overwrite="true" />
