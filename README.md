@@ -1,5 +1,12 @@
 # Skeleton Commander
 
+> **There is a newer version of this mod:
+> [Summon Commander](https://thunderstore.io/c/valheim/p/xMordax/SummonCommander/).** Besides Dead Raiser
+> skeletons it also manages the Spirit Caller's spirits (wolf, boar, moose, bear), lets you walk through your
+> summons instead of getting stuck in them and keeps following summons at a distance. Your Skeleton Commander
+> settings are copied on its first launch. When Summon Commander is installed, Skeleton Commander does not
+> load, so you can simply switch to it.
+
 A Valheim mod (BepInEx 5) for tracking and commanding the skeletons summoned with the
 **Dead Raiser** staff. The mod is client-side only and affects only the skeletons you summoned.
 

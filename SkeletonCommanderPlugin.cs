@@ -17,11 +17,14 @@ namespace SkeletonCommander
     }
 
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+    // Summon Commander is the successor of this mod (skeletons and Spirit Caller spirits); when it is installed,
+    // this mod does not load, so the skeletons are not patched and commanded twice.
+    [BepInIncompatibility("xmordax.valheim.summoncommander")]
     public class SkeletonCommanderPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "xmordax.valheim.skeletoncommander";
         public const string PluginName = "Skeleton Commander";
-        public const string PluginVersion = "1.9.1";
+        public const string PluginVersion = "1.10.0";
         // Config files of earlier GUIDs (the mod was called Skeleton Tracker before), newest first;
         // the first one found is taken over on first launch.
         private static readonly string[] OldConfigFileNames =

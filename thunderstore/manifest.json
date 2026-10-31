@@ -2,7 +2,7 @@
   "name": "SkeletonCommander",
   "version_number": "{version}",
   "website_url": "https://github.com/michalw387/SkeletonCommander",
-  "description": "Track and command your Dead Raiser skeletons: minimap pins, HUD panels with HP and Staff of Protection barrier bars, team loadout (sword & shield / bow), follow/stay/dismiss hotkeys and summon limit fixes.",
+  "description": "Superseded by Summon Commander (skeletons + Spirit Caller spirits). Track and command your Dead Raiser skeletons: minimap pins, HUD panels with HP bars, team loadout (sword & shield / bow), follow/stay/dismiss hotkeys and summon limit fixes.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2350"
   ]

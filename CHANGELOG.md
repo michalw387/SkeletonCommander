@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.0
+
+### Changed
+- **[Summon Commander](https://thunderstore.io/c/valheim/p/xMordax/SummonCommander/)** is the successor of
+  this mod: it does everything Skeleton Commander does, also for the Spirit Caller's spirits, and lets you walk
+  through your summons. When Summon Commander is installed, Skeleton Commander does not load.
+
 ## 1.9.1
 
 ### Fixed
